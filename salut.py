@@ -1,1 +1,1 @@
-print("c moi")
+print(1+1)
