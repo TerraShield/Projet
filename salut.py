@@ -1,2 +1,2 @@
-import weka.core.jvm as jvm
+from weka.core.jvm import jvm
 jvm.start()
