@@ -1,36 +1,36 @@
 import tkinter as tk
 from tkinter import ttk
-from page2 import create_page2  # On importe la fonction pour afficher la deuxième page
+from page2 import create_page2  # On importe la fonction create_page2 du fichier page2.py
 
 def create_app_window():
-    """Crée la fenêtre principale de l'application avec un onglet."""
-    
-    # Créer la fenêtre principale
+    """Crée la fenêtre principale de l'application avec un Notebook."""
     root = tk.Tk()
+    root.title("Application d'Images")
 
-    # Définir le titre de la fenêtre
-    root.title("Application avec Onglets")
-    root.geometry("600x400")
+    # Redimensionner la fenêtre principale en 1980x720
+    root.geometry("1280x720")
 
-    # Créer un Notebook (pour les onglets)
+    # Créer le notebook (onglet)
     notebook = ttk.Notebook(root)
-
-    # Créer les pages des onglets
-    frame1 = tk.Frame(notebook)
-    frame2 = tk.Frame(notebook)
-
-    # Ajouter les pages au notebook
-    notebook.add(frame1, text="Page d'Accueil")
-    notebook.add(frame2, text="Page 2")
-
-    # Placer le notebook dans la fenêtre
     notebook.pack(fill="both", expand=True)
 
-    # Remplir la première page (Page d'Accueil)
-    label1 = tk.Label(frame1, text="Bienvenue sur la Page d'Accueil", font=("Arial", 16))
-    label1.pack(pady=20)
+    # Créer le premier onglet (menu principal)
+    frame1 = tk.Frame(notebook)
+    notebook.add(frame1, text="Menu")
 
-    # Remplir la deuxième page en appelant la fonction `create_page2`
-    create_page2(frame2)  # Affiche les images dans le deuxième onglet
+    # Créer le deuxième onglet (page des images)
+    frame2 = tk.Frame(notebook)
+    notebook.add(frame2, text="Liste")
+    
+    # Créer la page 2 avec les images et la galerie
+    create_page2(frame2)
 
     return root
+
+def main():
+    """Fonction principale qui lance l'application."""
+    root = create_app_window()
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
