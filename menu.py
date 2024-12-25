@@ -21,9 +21,9 @@ def create_app_window():
     # Créer le deuxième onglet (page des images)
     frame2 = tk.Frame(notebook)
     notebook.add(frame2, text="Liste")
-    
+
     # Créer la page 2 avec les images et la galerie
-    create_page2(frame2)
+    create_page2(notebook, root)
 
     return root
 
