@@ -1,4 +1,4 @@
-from menu import create_app_window # type: ignore
+from menu import create_app_window  # type: ignore
 
 def main():
     # Créer la fenêtre de l'application en utilisant la fonction importée

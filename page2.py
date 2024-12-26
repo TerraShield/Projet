@@ -25,35 +25,35 @@ def search_images(image_folder, query):
     image_files = [f for f in os.listdir(image_folder) if f.endswith(('.jpg', '.png', '.jpeg', '.gif'))]
     return [f for f in image_files if query.lower() in f.lower()]
 
-def create_page2(notebook, root):
+def create_page2(frame, root):
     """Crée et affiche toutes les images d'un dossier dans des onglets avec barre de défilement."""
 
     # Dossier contenant les images
     image_folder = "images"
     if not os.path.exists(image_folder):
-        error_label = tk.Label(notebook, text="Le dossier 'images' est introuvable.", font=("Arial", 16), fg="red")
+        error_label = tk.Label(frame, text="Le dossier 'images' est introuvable.", font=("Arial", 16), fg="red")
         error_label.pack(pady=20)
         return
 
     # Créer un Frame principal pour organiser les sections
-    main_frame = tk.Frame(notebook)
+    main_frame = tk.Frame(frame)
     main_frame.pack(fill="both", expand=True)
 
     # Créer un Frame pour la barre de recherche
     search_frame = tk.Frame(main_frame)
     search_frame.pack(pady=10, anchor="w", fill="x")
 
-    search_label = tk.Label(search_frame, text="Rechercher :", font=("Arial", 12))
+    search_label = tk.Label(search_frame, text="Rechercher :", font=("Arial", 14))
     search_label.pack(side="left", padx=5)
 
-    search_entry = tk.Entry(search_frame, font=("Arial", 12))
+    search_entry = tk.Entry(search_frame, font=("Arial", 14))
     search_entry.pack(side="left", padx=5, fill="x", expand=True)
 
     def on_search():
         query = search_entry.get()  # Récupérer la chaîne de recherche
         update_gallery(query)
 
-    search_button = tk.Button(search_frame, text="Chercher", font=("Arial", 12), command=on_search)
+    search_button = tk.Button(search_frame, text="Chercher", font=("Arial", 14), command=on_search)
     search_button.pack(side="left", padx=5)
 
     # Créer un Frame pour les onglets
@@ -83,7 +83,7 @@ def create_page2(notebook, root):
         fixed_height = 200
 
         # Nombre d'images par onglet
-        images_per_tab = 200
+        images_per_tab = 250
 
         # Créer des onglets pour chaque groupe de 200 images
         for i in range(0, len(image_files), images_per_tab):
