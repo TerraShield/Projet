@@ -71,7 +71,7 @@ def setup_heatmap_page(frame, selected_folder):
 
                     # Ajouter un rectangle rouge autour de l'image active
                     if i == (index[0] - start_index):
-                        canvas.create_rectangle(x_position - 100, 100, x_position + 100, 300, outline="red", width=2)
+                        canvas.create_rectangle(x_position + 700, 100, x_position + 900, 300, outline="red", width=3)
 
                     # Associer un clic pour ouvrir les détails
                     canvas.tag_bind("current", "<Button-1>", lambda e, path=image_path: show_image_detail(path))
