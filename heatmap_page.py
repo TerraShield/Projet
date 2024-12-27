@@ -1,79 +1,144 @@
 import tkinter as tk
-from tkinter import ttk
 from PIL import Image, ImageTk
 import os
-import subprocess
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import numpy as np
 
-class HeatmapPage:
-    def __init__(self, frame):
-        self.create_heatmap_page(frame)
+def setup_heatmap_page(frame, image_folder="images"):
+    """Configure l'interface utilisateur pour afficher les heatmaps."""
+    image_files = []
 
-    def create_heatmap_page(self, frame):
-        """Crée et affiche toutes les cartes thermiques d'un dossier dans un onglet avec barre de défilement."""
+    # Charger les fichiers images
+    if os.path.exists(image_folder):
+        image_files = [f for f in os.listdir(image_folder) if f.endswith(('.jpg', '.png', '.jpeg'))]
+    else:
+        print(f"Dossier introuvable : {image_folder}")
 
-        # Dossier contenant les images
-        image_folder = "images"
-        if not os.path.exists(image_folder):
-            error_label = tk.Label(frame, text="Le dossier 'images' est introuvable.", font=("Arial", 16), fg="red")
-            error_label.pack(pady=20)
-            return
+    if not image_files:
+        error_label = tk.Label(frame, text="Aucune image trouvée dans le dossier.", font=("Arial", 16), fg="red")
+        error_label.pack(pady=20)
+        return
 
-        # Créer un Canvas pour le défilement
-        canvas = tk.Canvas(frame, width=1980, height=720)
-        scroll_bar_vertical = tk.Scrollbar(frame, orient="vertical", command=canvas.yview)
-        canvas.configure(yscrollcommand=scroll_bar_vertical.set)
+    current_index = [0]  # Utilisation d'une liste pour permettre une mutabilité
 
-        # Créer un Frame dans le Canvas pour y placer les heatmaps
-        images_frame = tk.Frame(canvas)
-        canvas.create_window((0, 0), window=images_frame, anchor="nw")
+    # Frame principale
+    control_frame = tk.Frame(frame)
+    control_frame.pack(fill="x", pady=10)
 
-        # Placer le Canvas et la barre de défilement verticale
-        canvas.pack(side="left", fill="both", expand=True)
-        scroll_bar_vertical.pack(side="right", fill="y")
+    canvas = tk.Canvas(frame, width=800, height=400, bg="white")
+    canvas.pack(side="top", fill="both", expand=True)
 
-        # Charger et afficher toutes les images
-        image_files = [f for f in os.listdir(image_folder) if f.endswith((".jpg", ".png", ".jpeg"))]
-        if not image_files:
-            no_results_label = tk.Label(frame, text="Aucune image trouvée.", font=("Arial", 16), fg="red")
-            no_results_label.pack(pady=20)
-            return
+    images_cache = []  # Pour stocker les références des images chargées
 
-        # Charger les cartes thermiques
-        for image_file in image_files:
-            image_path = os.path.join(image_folder, image_file)
-            canvas_tk = self.generate_heatmap(image_path)
-            if canvas_tk:
-                widget = canvas_tk.get_tk_widget()
-                widget.pack(pady=10)  # Utiliser `pack` pour aligner les heatmaps verticalement
+    # Fonction pour afficher un ensemble d'images centré autour de l'image principale
+    def update_image(index):
+        canvas.delete("all")  # Effacer les images précédentes
+        images_cache.clear()  # Nettoyer les références pour éviter les problèmes de mémoire
+        start = max(0, index[0] - 3)
+        end = min(len(image_files), index[0] + 4)
+        x_offset = 400 - ((end - start) * 100) // 2  # Calcul dynamique pour centrer la séquence d'images
 
-        # Mise à jour de la zone défilable du canvas
-        canvas.update_idletasks()
-        canvas.config(scrollregion=canvas.bbox("all"))
+        for i in range(start, end):
+            image_path = os.path.join(image_folder, image_files[i])
+            try:
+                image = Image.open(image_path).resize((150, 150), Image.Resampling.LANCZOS)
+                photo = ImageTk.PhotoImage(image)
+                images_cache.append(photo)  # Conserver une référence pour éviter le garbage collector
 
-    def generate_heatmap(self, image_path):
-        """Génère une carte thermique à partir d'une image."""
-        try:
-            # Charger l'image
-            image = Image.open(image_path)
-            image = image.resize((200, 200))  # Redimensionner l'image pour l'affichage
-            image_array = np.array(image)
+                # Dessiner l'image
+                canvas.create_image(x_offset, 200, image=photo, anchor="center")
 
-            # Créer une carte thermique
-            fig, ax = plt.subplots()
-            cax = ax.imshow(image_array, cmap='hot', interpolation='nearest')
-            fig.colorbar(cax)
+                # Ajouter un rectangle autour de l'image principale
+                if i == index[0]:
+                    canvas.create_rectangle(x_offset - 75, 125, x_offset + 75, 275, outline="red", width=2)
 
-            # Intégrer la carte thermique dans Tkinter
-            canvas = FigureCanvasTkAgg(fig, master=tk.Frame())
-            canvas.draw()
+                x_offset += 200  # Décalage pour la prochaine image
 
-            # Fermer la figure pour libérer la mémoire
-            plt.close(fig)
+            except Exception as e:
+                print(f"Erreur lors du chargement de l'image {image_path} : {e}")
 
-            return canvas
-        except Exception as e:
-            print(f"Erreur lors de la génération de la carte thermique : {e}")
-            return None
+    # Bouton pour aller à l'image précédente
+    def previous_image():
+        if current_index[0] > 0:
+            current_index[0] -= 1
+            update_image(current_index)
+
+    # Bouton pour aller à l'image suivante
+    def next_image():
+        if current_index[0] < len(image_files) - 1:
+            current_index[0] += 1
+            update_image(current_index)
+
+    prev_button = tk.Button(control_frame, text="←", font=("Arial", 16), command=previous_image)
+    prev_button.pack(side="left", padx=10)
+
+    next_button = tk.Button(control_frame, text="→", font=("Arial", 16), command=next_image)
+    next_button.pack(side="right", padx=10)
+
+    # Barre de recherche
+    search_frame = tk.Frame(control_frame)
+    search_frame.pack(fill="x", pady=10)
+
+    search_label = tk.Label(search_frame, text="Rechercher une image :", font=("Arial", 14))
+    search_label.pack(side="left", padx=5)
+
+    search_entry = tk.Entry(search_frame, font=("Arial", 14))
+    search_entry.pack(side="left", fill="x", expand=True, padx=5)
+
+    result_frame = tk.Frame(frame)
+    result_frame.pack(fill="both", expand=True, pady=10)
+
+    result_canvas = tk.Canvas(result_frame)
+    result_scrollbar = tk.Scrollbar(result_frame, orient="vertical", command=result_canvas.yview)
+    result_scrollable_frame = tk.Frame(result_canvas)
+
+    result_scrollable_frame.bind(
+        "<Configure>", lambda e: result_canvas.configure(scrollregion=result_canvas.bbox("all"))
+    )
+
+    result_canvas.create_window((0, 0), window=result_scrollable_frame, anchor="nw")
+    result_canvas.configure(yscrollcommand=result_scrollbar.set)
+
+    result_canvas.pack(side="left", fill="both", expand=True)
+    result_scrollbar.pack(side="right", fill="y")
+
+    def search_image():
+        for widget in result_scrollable_frame.winfo_children():
+            widget.destroy()
+
+        query = search_entry.get().strip().lower()
+        matching_files = [f for f in image_files if query in f.lower()]
+
+        if not matching_files:
+            no_results_label = tk.Label(result_scrollable_frame, text="Aucun résultat trouvé.", font=("Arial", 14), fg="red")
+            no_results_label.pack(pady=10)
+        else:
+            for file in matching_files:
+                image_path = os.path.join(image_folder, file)
+                try:
+                    image = Image.open(image_path).resize((50, 50), Image.Resampling.LANCZOS)
+                    photo = ImageTk.PhotoImage(image)
+                    images_cache.append(photo)
+
+                    result_frame = tk.Frame(result_scrollable_frame)
+                    result_frame.pack(fill="x", pady=5, padx=5)
+
+                    img_label = tk.Label(result_frame, image=photo)
+                    img_label.image = photo
+                    img_label.pack(side="left", padx=5)
+
+                    button = tk.Button(result_frame, text=file, font=("Arial", 12), command=lambda f=file: select_image(f))
+                    button.pack(side="left", anchor="w", padx=5)
+
+                except Exception as e:
+                    print(f"Erreur lors du chargement de la vignette {image_path} : {e}")
+
+    def select_image(file_name):
+        index = image_files.index(file_name)
+        current_index[0] = index
+        update_image(current_index)
+
+    search_button = tk.Button(search_frame, text="Rechercher", font=("Arial", 14), command=search_image)
+    search_button.pack(side="left", padx=5)
+
+    # Initialiser avec la première image
+    if image_files:
+        update_image(current_index)
