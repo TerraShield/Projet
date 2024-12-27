@@ -92,6 +92,22 @@ def setup_heatmap_page(frame, selected_folder):
         prev_button.config(command=previous_image)
         next_button.config(command=next_image)
 
+        # Fonction de défilement horizontal
+        def on_scroll(event):
+            if event.delta > 0:
+                # Molette vers le haut = image précédente
+                if current_index[0] > 0:
+                    current_index[0] -= 1
+                    update_images_around(current_index)
+            elif event.delta < 0:
+                # Molette vers le bas = image suivante
+                if current_index[0] < len(images) - 1:
+                    current_index[0] += 1
+                    update_images_around(current_index)
+
+        # Bind pour la molette de la souris
+        canvas.bind_all("<MouseWheel>", on_scroll)
+
         if images:
             update_images_around(current_index)
 
