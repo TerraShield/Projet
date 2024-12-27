@@ -18,7 +18,7 @@ def show_image_detail(image_path):
 
     try:
         # Charger l'image sélectionnée
-        image = Image.open(image_path).resize((600, 400), Image.Resampling.LANCZOS)
+        image = Image.open(image_path).resize((400, 400), Image.Resampling.LANCZOS)
         photo = ImageTk.PhotoImage(image)
 
         # Conserver une référence pour éviter le garbage collector
