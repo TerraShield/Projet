@@ -3,45 +3,34 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 import os
 import subprocess
+from detail_image import show_image_detail
 
-# Fonction pour ouvrir un fichier image avec l'application par défaut
-def open_image_file(image_path):
-    """Ouvre le fichier image avec l'application par défaut."""
-    try:
-        subprocess.run(["start", image_path], shell=True, check=True)  # Sur Windows
-    except Exception as e:
-        print(f"Erreur lors de l'ouverture du fichier : {e}")
+def create_page2(frame, root, selected_folder):
+    """Crée une galerie d'images, organisée par sous-dossiers avec des mini-onglets et un défilement."""
+    image_folder = selected_folder if selected_folder else "images"
 
-def crop_image(image):
-    """Recadre l'image pour enlever les espaces vides (blancs ou transparents) autour de l'image."""
-    bbox = image.getbbox()
-    if bbox:
-        return image.crop(bbox)
-    else:
-        return image
-
-def search_images(image_folder, query):
-    """Filtrer les images qui contiennent la chaîne de recherche dans leur nom."""
-    image_files = [f for f in os.listdir(image_folder) if f.endswith(('.jpg', '.png', '.jpeg', '.gif'))]
-    return [f for f in image_files if query.lower() in f.lower()]
-
-def create_page2(frame, root):
-    """Crée et affiche toutes les images d'un dossier dans des onglets avec barre de défilement."""
-
-    # Dossier contenant les images
-    image_folder = "images"
     if not os.path.exists(image_folder):
-        error_label = tk.Label(frame, text="Le dossier 'images' est introuvable.", font=("Arial", 16), fg="red")
+        error_label = tk.Label(frame, text=f"Le dossier '{image_folder}' est introuvable.", font=("Arial", 16), fg="red")
         error_label.pack(pady=20)
         return
 
-    # Créer un Frame principal pour organiser les sections
-    main_frame = tk.Frame(frame)
-    main_frame.pack(fill="both", expand=True)
+    # Récupérer toutes les images par sous-dossier
+    images_by_folder = {}
+    for root_dir, _, files in os.walk(image_folder):
+        folder_name = os.path.relpath(root_dir, image_folder)
+        images_by_folder[folder_name] = []
+        for file in files:
+            if file.endswith(('.jpg', '.png', '.jpeg')):
+                images_by_folder[folder_name].append(os.path.join(root_dir, file))
 
-    # Créer un Frame pour la barre de recherche
-    search_frame = tk.Frame(main_frame)
-    search_frame.pack(pady=10, anchor="w", fill="x")
+    if not any(images_by_folder.values()):
+        no_images_label = tk.Label(frame, text="Aucune image disponible dans le dossier sélectionné.", font=("Arial", 16), fg="red")
+        no_images_label.pack(pady=20)
+        return
+
+    # Ajouter une barre de recherche
+    search_frame = tk.Frame(frame)
+    search_frame.pack(pady=10, fill="x")
 
     search_label = tk.Label(search_frame, text="Rechercher :", font=("Arial", 14))
     search_label.pack(side="left", padx=5)
@@ -49,100 +38,73 @@ def create_page2(frame, root):
     search_entry = tk.Entry(search_frame, font=("Arial", 14))
     search_entry.pack(side="left", padx=5, fill="x", expand=True)
 
-    def on_search():
-        query = search_entry.get()  # Récupérer la chaîne de recherche
-        update_gallery(query)
+    def filter_images():
+        query = search_entry.get().lower()
+        filtered = {folder: [img for img in images if query in os.path.basename(img).lower()]
+                    for folder, images in images_by_folder.items()}
+        display_images(filtered)
 
-    search_button = tk.Button(search_frame, text="Chercher", font=("Arial", 14), command=on_search)
+    search_button = tk.Button(search_frame, text="Chercher", font=("Arial", 14), command=filter_images)
     search_button.pack(side="left", padx=5)
 
-    # Créer un Frame pour les onglets
-    tab_frame = tk.Frame(main_frame)
-    tab_frame.pack(fill="both", expand=True)
+    # Créer un Notebook pour les sous-dossiers
+    notebook = ttk.Notebook(frame)
+    notebook.pack(fill="both", expand=True)
 
-    # Créer un Notebook pour les onglets
-    image_notebook = ttk.Notebook(tab_frame)
-    image_notebook.pack(fill="both", expand=True)
+    def display_images_for_folder(folder_name, images):
+        folder_frame = tk.Frame(notebook)
+        notebook.add(folder_frame, text=folder_name)
 
-    # Fonction pour mettre à jour la galerie avec les résultats de la recherche
-    def update_gallery(query=""):
-        """Met à jour la galerie en fonction du texte de recherche."""
-        # Supprimer tous les onglets existants
-        for tab in image_notebook.tabs():
-            image_notebook.forget(tab)
+        # Ajouter un canvas avec scroll pour chaque dossier
+        canvas = tk.Canvas(folder_frame)
+        scrollbar = tk.Scrollbar(folder_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas)
 
-        image_files = search_images(image_folder, query)
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
 
-        if not image_files:
-            no_results_label = tk.Label(image_notebook, text="Aucune image trouvée.", font=("Arial", 16), fg="red")
-            no_results_label.pack(pady=20)
-            return
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Taille fixe pour redimensionner toutes les images après recadrage
-        fixed_width = 200
-        fixed_height = 200
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
-        # Nombre d'images par onglet
-        images_per_tab = 250
+        row, col = 0, 0
+        for image_file in images:
+            try:
+                img = Image.open(image_file).resize((150, 150), Image.Resampling.LANCZOS)
+                photo = ImageTk.PhotoImage(img)
 
-        # Créer des onglets pour chaque groupe de 200 images
-        for i in range(0, len(image_files), images_per_tab):
-            tab_frame = tk.Frame(image_notebook)
-            image_notebook.add(tab_frame, text=f"Liste {i//images_per_tab + 1}")
-
-            # Créer un Canvas pour le défilement
-            canvas = tk.Canvas(tab_frame)
-            scroll_bar_horizontal = tk.Scrollbar(tab_frame, orient="horizontal", command=canvas.xview)
-            canvas.configure(xscrollcommand=scroll_bar_horizontal.set)
-            scroll_bar_vertical = tk.Scrollbar(tab_frame, orient="vertical", command=canvas.yview)
-            canvas.configure(yscrollcommand=scroll_bar_vertical.set)
-
-            # Créer un Frame dans le Canvas pour y placer les images
-            images_frame = tk.Frame(canvas)
-            canvas.create_window((0, 0), window=images_frame, anchor="nw")
-
-            # Placer la scrollbar en bas et à droite
-            scroll_bar_horizontal.pack(fill="x", side="bottom")
-            scroll_bar_vertical.pack(fill="y", side="right")
-            canvas.pack(fill="both", expand=True)
-
-            # Charger et afficher les images pour cet onglet
-            row = 0
-            col = 0
-            max_images_per_row = 5  # Nombre d'images par ligne
-
-            for image_file in image_files[i:i+images_per_tab]:
-                image_path = os.path.join(image_folder, image_file)
-                image = Image.open(image_path)
-                image = crop_image(image)
-                image = image.resize((fixed_width, fixed_height))
-
-                photo = ImageTk.PhotoImage(image)
-
-                label = tk.Label(images_frame, image=photo)
-                label.image = photo
-
-                # Ajouter un événement de clic pour ouvrir l'image avec l'application par défaut
-                label.bind("<Button-1>", lambda e, image_path=image_path: open_image_file(image_path))
-
-                # Aligner toutes les images en grille
+                label = tk.Label(scrollable_frame, image=photo)
+                label.image = photo  # Préserver une référence pour éviter le garbage collector
                 label.grid(row=row, column=col, padx=10, pady=10)
+
+                # Associer un clic gauche pour ouvrir l'image avec le lecteur par défaut
+                label.bind("<Button-1>", lambda e, path=image_file: subprocess.run(["start", path], shell=True))
+
+                # Associer un clic droit pour afficher les détails de l'image
+                label.bind("<Button-3>", lambda e, path=image_file: show_image_detail(path))
+
                 col += 1
-                if col >= max_images_per_row:
+                if col > 4:  # 5 images par ligne
                     col = 0
                     row += 1
 
-            # Mise à jour de la zone défilable du canvas
-            canvas.update_idletasks()
-            canvas.config(scrollregion=canvas.bbox("all"))
+            except Exception as e:
+                print(f"Erreur lors du chargement de l'image {image_file}: {e}")
 
-    # Charger les images initiales (toutes les images sans filtre)
-    update_gallery()  # Affiche toutes les images au début
+        # Lier la molette de la souris pour le défilement
+        def on_mouse_wheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-    # Lier les événements de la molette de la souris pour le défilement à la fenêtre principale
-    def on_mouse_wheel(event):
-        current_tab = image_notebook.select()
-        canvas = image_notebook.nametowidget(current_tab).winfo_children()[0]
-        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", on_mouse_wheel)
 
-    root.bind_all("<MouseWheel>", on_mouse_wheel)
+    def display_images(images_by_folder):
+        for folder_name, images in images_by_folder.items():
+            if images:  # Ajouter un onglet uniquement si le dossier contient des images
+                display_images_for_folder(folder_name, images)
+
+    # Afficher toutes les images organisées par sous-dossier initialement
+    display_images(images_by_folder)

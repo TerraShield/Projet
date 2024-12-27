@@ -1,12 +1,10 @@
 import tkinter as tk
+from tkinter import filedialog
 from PIL import Image, ImageTk
 import os
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 def show_image_detail(image_path):
-    """Affiche une fenêtre avec l'image sélectionnée, son nom en titre et une carte de chaleur des pixels."""
+    """Affiche une fenêtre avec l'image sélectionnée, son nom en titre, et permet d'ajouter l'image à un dossier."""
     if not os.path.exists(image_path):
         print(f"L'image {image_path} est introuvable.")
         return
@@ -14,7 +12,7 @@ def show_image_detail(image_path):
     # Créer une nouvelle fenêtre
     detail_window = tk.Toplevel()
     detail_window.title(f"Détail de l'image : {os.path.basename(image_path)}")
-    detail_window.geometry("1000x800")
+    detail_window.geometry("800x600")
 
     try:
         # Charger l'image sélectionnée
@@ -32,20 +30,23 @@ def show_image_detail(image_path):
         image_label = tk.Label(detail_window, image=photo)
         image_label.pack(expand=True)
 
-        # Générer une carte de chaleur basée sur les pixels
-        img_array = np.array(image.convert("L"))  # Convertir en niveaux de gris
-        heatmap = np.abs(np.fft.fft2(img_array))  # Exemple d'analyse, ajustez si nécessaire
+        # Fonction pour sélectionner un dossier et copier l'image
+        def add_to_folder():
+            folder_selected = filedialog.askdirectory(title="Sélectionnez un dossier")
+            if folder_selected:
+                try:
+                    destination = os.path.join(folder_selected, os.path.basename(image_path))
+                    with open(image_path, 'rb') as src, open(destination, 'wb') as dst:
+                        dst.write(src.read())
+                    success_label = tk.Label(detail_window, text="Image ajoutée avec succès !", font=("Arial", 12), fg="green")
+                    success_label.pack(pady=10)
+                except Exception as e:
+                    error_label = tk.Label(detail_window, text=f"Erreur : {e}", font=("Arial", 12), fg="red")
+                    error_label.pack(pady=10)
 
-        # Créer une figure matplotlib
-        fig, ax = plt.subplots(figsize=(6, 4))
-        cax = ax.imshow(heatmap, cmap="hot", interpolation="nearest")
-        fig.colorbar(cax, ax=ax, orientation='vertical')
-        ax.set_title("Carte de chaleur des pixels")
-
-        # Ajouter la figure à Tkinter
-        canvas = FigureCanvasTkAgg(fig, master=detail_window)
-        canvas_widget = canvas.get_tk_widget()
-        canvas_widget.pack(pady=10)
+        # Bouton pour ajouter l'image à un dossier
+        add_button = tk.Button(detail_window, text="Ajouter au dossier", command=add_to_folder, font=("Arial", 14))
+        add_button.pack(pady=10)
 
         # Bouton pour fermer la fenêtre
         close_button = tk.Button(detail_window, text="Fermer", command=detail_window.destroy, font=("Arial", 14))

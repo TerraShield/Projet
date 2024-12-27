@@ -1,147 +1,138 @@
 import tkinter as tk
+from tkinter import ttk
 from PIL import Image, ImageTk
 import os
 from detail_image import show_image_detail
 
-def setup_heatmap_page(frame, image_folder="images"):
-    """Configure l'interface utilisateur pour afficher les heatmaps."""
-    image_files = []
+def setup_heatmap_page(frame, selected_folder):
+    """Configure une page de heatmap avec des sous-onglets pour chaque sous-dossier, navigation horizontale, une barre de recherche avec défilement et molette."""
+    image_folder = selected_folder if selected_folder else "images"
 
-    # Charger les fichiers images
-    if os.path.exists(image_folder):
-        image_files = [f for f in os.listdir(image_folder) if f.endswith(('.jpg', '.png', '.jpeg'))]
-    else:
-        print(f"Dossier introuvable : {image_folder}")
+    # Récupérer les images par sous-dossier
+    images_by_folder = {}
+    for root_dir, _, files in os.walk(image_folder):
+        folder_name = os.path.relpath(root_dir, image_folder)
+        images_by_folder[folder_name] = []
+        for file in files:
+            if file.endswith(('.jpg', '.png', '.jpeg')):
+                images_by_folder[folder_name].append(os.path.join(root_dir, file))
 
-    if not image_files:
-        error_label = tk.Label(frame, text="Aucune image trouvée dans le dossier.", font=("Arial", 16), fg="red")
+    if not any(images_by_folder.values()):
+        error_label = tk.Label(frame, text="Aucune image trouvée dans les sous-dossiers.", font=("Arial", 16), fg="red")
         error_label.pack(pady=20)
         return
 
-    current_index = [0]  # Utilisation d'une liste pour permettre une mutabilité
+    # Créer une barre de recherche avec des flèches
+    search_frame = tk.Frame(frame)
+    search_frame.pack(pady=10, fill="x")
 
-    # Frame principale
-    control_frame = tk.Frame(frame)
-    control_frame.pack(fill="x", pady=10)
+    prev_button = tk.Button(search_frame, text="\u2190", font=("Arial", 14))
+    prev_button.pack(side="left", padx=5)
 
-    # Bouton pour aller à l'image précédente
-    def previous_image():
-        if current_index[0] > 0:
-            current_index[0] -= 1
-            update_image(current_index)
-
-    # Bouton pour aller à l'image suivante
-    def next_image():
-        if current_index[0] < len(image_files):
-            current_index[0] += 1
-            update_image(current_index)
-
-    prev_button = tk.Button(control_frame, text="\u2190", font=("Arial", 16), command=previous_image)
-    prev_button.pack(side="left", padx=10)
-
-    # Barre de recherche entre les flèches
-    search_frame = tk.Frame(control_frame)
-    search_frame.pack(side="left", fill="x", expand=True, padx=5)
-
-    search_label = tk.Label(search_frame, text="Rechercher une image :", font=("Arial", 14))
+    search_label = tk.Label(search_frame, text="Rechercher :", font=("Arial", 14))
     search_label.pack(side="left", padx=5)
 
     search_entry = tk.Entry(search_frame, font=("Arial", 14))
-    search_entry.pack(side="left", fill="x", expand=True, padx=5)
+    search_entry.pack(side="left", padx=5, fill="x", expand=True)
 
-    result_frame = tk.Frame(frame)
-    result_frame.pack(fill="x", side="bottom", pady=10)
+    next_button = tk.Button(search_frame, text="\u2192", font=("Arial", 14))
+    next_button.pack(side="right", padx=5)
 
-    result_canvas = tk.Canvas(result_frame, height=200)
-    result_scrollbar = tk.Scrollbar(result_frame, orient="vertical", command=result_canvas.yview)
-    result_scrollable_frame = tk.Frame(result_canvas)
+    notebook = ttk.Notebook(frame)
+    notebook.pack(fill="both", expand=True)
 
-    result_scrollable_frame.bind(
-        "<Configure>", lambda e: result_canvas.configure(scrollregion=result_canvas.bbox("all"))
-    )
+    # Fonction pour afficher les images d'un sous-dossier
+    def display_images_for_folder(folder_name, images):
+        folder_frame = tk.Frame(notebook)
+        notebook.add(folder_frame, text=folder_name)
 
-    result_canvas.create_window((0, 0), window=result_scrollable_frame, anchor="nw")
-    result_canvas.configure(yscrollcommand=result_scrollbar.set)
+        canvas = tk.Canvas(folder_frame, width=800, height=400, bg="white")
+        canvas.pack(fill="both", expand=True)
 
-    result_canvas.pack(side="left", fill="both", expand=True)
-    result_scrollbar.pack(side="right", fill="y")
+        images_cache = []
+        current_index = [0]
 
-    def search_image():
-        for widget in result_scrollable_frame.winfo_children():
-            widget.destroy()
+        def update_images_around(index):
+            canvas.delete("all")
+            images_cache.clear()
 
-        query = search_entry.get().strip().lower()
-        matching_files = [f for f in image_files if query in f.lower()]
+            start_index = max(0, index[0] - 4)
+            end_index = min(len(images), index[0] + 5)
+            images_to_display = images[start_index:end_index]
 
-        if not matching_files:
-            no_results_label = tk.Label(result_scrollable_frame, text="Aucun résultat trouvé.", font=("Arial", 14), fg="red")
-            no_results_label.pack(pady=10)
-        else:
-            for file in matching_files:
-                image_path = os.path.join(image_folder, file)
+            for i, image_path in enumerate(images_to_display):
                 try:
-                    image = Image.open(image_path).resize((50, 50), Image.Resampling.LANCZOS)
-                    photo = ImageTk.PhotoImage(image)
+                    img = Image.open(image_path).resize((200, 200), Image.Resampling.LANCZOS)
+                    photo = ImageTk.PhotoImage(img)
+                    images_cache.append(photo)
 
-                    frame = tk.Frame(result_scrollable_frame)
-                    frame.pack(fill="x", pady=5, padx=5)
+                    x_position = 200 * (i - (index[0] - start_index)) + 100
+                    canvas.create_image(x_position, 200, image=photo, anchor="center")
 
-                    img_label = tk.Label(frame, image=photo)
-                    img_label.image = photo
-                    img_label.pack(side="left", padx=5)
+                    # Ajouter un rectangle rouge autour de l'image active
+                    if i == (index[0] - start_index):
+                        canvas.create_rectangle(x_position - 100, 100, x_position + 100, 300, outline="red", width=2)
 
-                    button = tk.Button(frame, text=file, font=("Arial", 12), command=lambda f=file: select_image(f))
-                    button.pack(side="left", anchor="w", padx=5)
+                    # Associer un clic pour ouvrir les détails
+                    canvas.tag_bind("current", "<Button-1>", lambda e, path=image_path: show_image_detail(path))
 
                 except Exception as e:
-                    print(f"Erreur lors du chargement de la vignette {image_path} : {e}")
+                    print(f"Erreur lors du chargement de l'image {images[index[0]]}: {e}")
 
-    def select_image(file_name):
-        index = image_files.index(file_name)
-        current_index[0] = index
-        update_image(current_index)
+        def previous_image():
+            if current_index[0] > 0:
+                current_index[0] -= 1
+                update_images_around(current_index)
 
-    search_button = tk.Button(search_frame, text="Rechercher", font=("Arial", 14), command=search_image)
-    search_button.pack(side="left", padx=5)
+        def next_image():
+            if current_index[0] < len(images) - 1:
+                current_index[0] += 1
+                update_images_around(current_index)
 
-    next_button = tk.Button(control_frame, text="\u2192", font=("Arial", 16), command=next_image)
-    next_button.pack(side="right", padx=10)
+        prev_button.config(command=previous_image)
+        next_button.config(command=next_image)
 
-    canvas = tk.Canvas(frame, width=800, height=400, bg="white")
-    canvas.pack(side="top", fill="both", expand=True)
+        if images:
+            update_images_around(current_index)
 
-    images_cache = []  # Pour stocker les références des images chargées
+    for folder_name, images in images_by_folder.items():
+        if images:
+            display_images_for_folder(folder_name, images)
 
-    # Fonction pour afficher un ensemble d'images centré autour de l'image principale
-    def update_image(index):
-        canvas.delete("all")  # Effacer les images précédentes
-        images_cache.clear()  # Nettoyer les références pour éviter les problèmes de mémoire
-        start = max(0, index[0] - 3)
-        end = min(len(image_files), index[0] + 4)
-        x_offset = 400 - ((end - start) * 100) // 2  # Calcul dynamique pour centrer la séquence d'images
+    # Fonction de recherche
+    def filter_images():
+        query = search_entry.get().lower()
+        filtered_images = []
+        for folder_name, images in images_by_folder.items():
+            for image_path in images:
+                if query in os.path.basename(image_path).lower():
+                    filtered_images.append(image_path)
+        return filtered_images
 
-        for i in range(start, end):
-            image_path = os.path.join(image_folder, image_files[i])
-            try:
-                image = Image.open(image_path).resize((150, 150), Image.Resampling.LANCZOS)
-                photo = ImageTk.PhotoImage(image)
-                images_cache.append(photo)  # Conserver une référence pour éviter le garbage collector
+    # Liste des résultats
+    result_listbox = tk.Listbox(frame, font=("Arial", 14), height=5)
+    result_listbox.pack(pady=10, fill="x")
 
-                # Dessiner l'image
-                image_id = canvas.create_image(x_offset, 200, image=photo, anchor="center")
+    def update_result_list():
+        result_listbox.delete(0, tk.END)
+        filtered_images = filter_images()
+        for image_path in filtered_images:
+            result_listbox.insert(tk.END, os.path.basename(image_path))
 
-                # Ajouter un rectangle autour de l'image principale
-                if i == index[0]:
-                    canvas.create_rectangle(x_offset - 75, 125, x_offset + 75, 275, outline="red", width=2)
+    search_button = tk.Button(search_frame, text="Chercher", font=("Arial", 14), command=update_result_list)
+    search_button.pack(side="right", padx=5)
 
-                # Associer un clic gauche pour ouvrir les détails de l'image
-                canvas.tag_bind(image_id, "<Button-1>", lambda event, path=image_path: show_image_detail(path))
+    def on_image_select(event):
+        selected_index = result_listbox.curselection()
+        if selected_index:
+            selected_image = result_listbox.get(selected_index)
+            for folder_name, images in images_by_folder.items():
+                for image_path in images:
+                    if os.path.basename(image_path) == selected_image:
+                        # Mettre à jour la heatmap pour afficher l'image sélectionnée
+                        # (Cette partie dépend de la structure de votre code existant)
+                        # Par exemple, vous pouvez appeler une fonction pour afficher l'image dans la heatmap
+                        # display_selected_image(image_path)
+                        break
 
-                x_offset += 200  # Décalage pour la prochaine image
-
-            except Exception as e:
-                print(f"Erreur lors du chargement de l'image {image_path} : {e}")
-
-    # Initialiser avec la première image
-    if image_files:
-        update_image(current_index)
+    result_listbox.bind('<<ListboxSelect>>', on_image_select)

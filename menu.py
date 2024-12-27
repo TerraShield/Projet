@@ -1,13 +1,35 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog
 from page2 import create_page2  # Fonction pour gérer la page 2
 from heatmap_page import setup_heatmap_page  # Fonction pour gérer la page Heatmap
+from histogramme import setup_histogram_page  # Fonction pour gérer la page Histogramme
 
 def create_app_window():
     """Crée la fenêtre principale de l'application avec un Notebook."""
     root = tk.Tk()
     root.title("Application d'Images")
     root.geometry("1280x720")  # Taille de la fenêtre principale
+
+    # Créer une variable pour stocker le dossier sélectionné
+    selected_folder = tk.StringVar(value="images")
+
+    # Fonction pour sélectionner un dossier
+    def select_folder():
+        folder = filedialog.askdirectory(title="Sélectionnez un dossier contenant des images")
+        if folder:
+            selected_folder.set(folder)
+            refresh_tabs()  # Rafraîchir les onglets après la sélection
+
+    # Fonction pour rafraîchir les onglets `Liste` et `Heatmap`
+    def refresh_tabs():
+        # Effacer les onglets existants
+        for widget in frame2.winfo_children():
+            widget.destroy()
+        create_page2(frame2, root, selected_folder.get())
+
+        for widget in frame3.winfo_children():
+            widget.destroy()
+        setup_heatmap_page(frame3, selected_folder.get())
 
     # Création du Notebook pour les onglets
     notebook = ttk.Notebook(root)
@@ -21,24 +43,28 @@ def create_app_window():
     frame1 = tk.Frame(notebook)
     notebook.add(frame1, text="Menu")
     menu_label = tk.Label(frame1, text="Bienvenue dans le Menu Principal", font=("Arial", 24, "bold"))
-    menu_label.pack(pady=50)
+    menu_label.pack(pady=20)
+
+    select_button = tk.Button(frame1, text="Sélectionner un dossier", command=select_folder, font=("Arial", 14))
+    select_button.pack(pady=10)
+
+    selected_folder_label = tk.Label(frame1, textvariable=selected_folder, font=("Arial", 12), fg="blue")
+    selected_folder_label.pack(pady=5)
 
     # Onglet 2 : Liste des images
     frame2 = tk.Frame(notebook)
     notebook.add(frame2, text="Liste")
-    create_page2(frame2, root)  # Configure la page 2 pour afficher la liste des images
+    create_page2(frame2, root, selected_folder.get())  # Passe le dossier sélectionné
 
     # Onglet 3 : Heatmaps
     frame3 = tk.Frame(notebook)
     notebook.add(frame3, text="Heatmap")
-    setup_heatmap_page(frame3, image_folder="images")  # Corrige le nom de la fonction appelée
+    setup_heatmap_page(frame3, selected_folder.get())  # Passe le dossier sélectionné
+
+    # Onglet 4 : Histogrammes
+    frame4 = tk.Frame(notebook)
+    notebook.add(frame4, text="Histogramme")
+    setup_histogram_page(frame4)  # Configure la page Histogramme
 
     return root
 
-def main():
-    """Fonction principale pour lancer l'application."""
-    root = create_app_window()
-    root.mainloop()
-
-if __name__ == "__main__":
-    main()
