@@ -1,8 +1,9 @@
 import tkinter as tk
 from tkinter import ttk, filedialog
 from page2 import create_page2  # Fonction pour gérer la page 2
-from heatmap_page import setup_heatmap_page  # Fonction pour gérer la page Heatmap
+from cluster_page import setup_cluster_page  # Fonction pour gérer la page Clustering
 from histogramme import setup_histogram_page  # Fonction pour gérer la page Histogramme
+from heatmap_page import setup_heatmap_page  # Fonction pour gérer la page Heatmap
 
 def create_app_window():
     """Crée la fenêtre principale de l'application avec un Notebook."""
@@ -20,7 +21,7 @@ def create_app_window():
             selected_folder.set(folder)
             refresh_tabs()  # Rafraîchir les onglets après la sélection
 
-    # Fonction pour rafraîchir les onglets `Liste` et `Heatmap`
+    # Fonction pour rafraîchir les onglets `Liste`, `Clustering`, `Histogramme` et `Heatmap`
     def refresh_tabs():
         # Effacer les onglets existants
         for widget in frame2.winfo_children():
@@ -29,7 +30,15 @@ def create_app_window():
 
         for widget in frame3.winfo_children():
             widget.destroy()
-        setup_heatmap_page(frame3, selected_folder.get())
+        setup_cluster_page(frame3, selected_folder.get())
+
+        for widget in frame4.winfo_children():
+            widget.destroy()
+        setup_histogram_page(frame4, selected_folder.get())  # Passe le dossier sélectionné
+
+        for widget in frame5.winfo_children():
+            widget.destroy()
+        setup_heatmap_page(frame5, selected_folder.get())  # Passe le dossier sélectionné
 
     # Création du Notebook pour les onglets
     notebook = ttk.Notebook(root)
@@ -56,15 +65,20 @@ def create_app_window():
     notebook.add(frame2, text="Liste")
     create_page2(frame2, root, selected_folder.get())  # Passe le dossier sélectionné
 
-    # Onglet 3 : Heatmaps
+    # Onglet 3 : Clustering
     frame3 = tk.Frame(notebook)
-    notebook.add(frame3, text="Heatmap")
-    setup_heatmap_page(frame3, selected_folder.get())  # Passe le dossier sélectionné
+    notebook.add(frame3, text="Clustering")
+    setup_cluster_page(frame3, selected_folder.get())  # Passe le dossier sélectionné
 
     # Onglet 4 : Histogrammes
     frame4 = tk.Frame(notebook)
     notebook.add(frame4, text="Histogramme")
-    setup_histogram_page(frame4)  # Configure la page Histogramme
+    setup_histogram_page(frame4, selected_folder.get())  # Configure la page Histogramme
+
+    # Onglet 5 : Heatmap
+    frame5 = tk.Frame(notebook)
+    notebook.add(frame5, text="Heatmap")
+    setup_heatmap_page(frame5, selected_folder.get())  # Configure la page Heatmap
 
     return root
 

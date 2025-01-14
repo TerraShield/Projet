@@ -1,154 +1,93 @@
+import os
+import numpy as np
+from PIL import Image, ImageTk
 import tkinter as tk
 from tkinter import ttk
-from PIL import Image, ImageTk
-import os
-from detail_image import show_image_detail
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from heatmap_algo import load_and_preprocess_images, extract_sift_features, create_bow, get_bow_histograms, dbscan_clustering, visualize_results
 
 def setup_heatmap_page(frame, selected_folder):
-    """Configure une page de heatmap avec des sous-onglets pour chaque sous-dossier, navigation horizontale, une barre de recherche avec défilement et molette."""
-    image_folder = selected_folder if selected_folder else "images"
-
-    # Récupérer les images par sous-dossier
-    images_by_folder = {}
-    for root_dir, _, files in os.walk(image_folder):
-        folder_name = os.path.relpath(root_dir, image_folder)
-        images_by_folder[folder_name] = []
-        for file in files:
-            if file.endswith(('.jpg', '.png', '.jpeg')):
-                images_by_folder[folder_name].append(os.path.join(root_dir, file))
-
-    if not any(images_by_folder.values()):
-        error_label = tk.Label(frame, text="Aucune image trouvée dans les sous-dossiers.", font=("Arial", 16), fg="red")
+    """Configure un onglet pour afficher les heatmaps des images."""
+    if not os.path.exists(selected_folder):
+        error_label = tk.Label(frame, text=f"Le dossier '{selected_folder}' est introuvable.", font=("Arial", 16), fg="red")
         error_label.pack(pady=20)
         return
 
-    # Créer une barre de recherche avec des flèches
-    search_frame = tk.Frame(frame)
-    search_frame.pack(pady=10, fill="x")
+    # Récupérer toutes les images du dossier
+    image_files = [os.path.join(selected_folder, f) for f in os.listdir(selected_folder) if f.endswith(('.jpg', '.png', '.jpeg'))]
 
-    prev_button = tk.Button(search_frame, text="\u2190", font=("Arial", 14))
-    prev_button.pack(side="left", padx=5)
+    if not image_files:
+        no_images_label = tk.Label(frame, text="Aucune image disponible dans le dossier sélectionné.", font=("Arial", 16), fg="red")
+        no_images_label.pack(pady=20)
+        return
 
-    search_label = tk.Label(search_frame, text="Rechercher :", font=("Arial", 14))
-    search_label.pack(side="left", padx=5)
+    # Fonction pour afficher le heatmap d'une image
+    def show_heatmap(original_image_path):
+        images, labels, image_paths = load_and_preprocess_images(image_files)
 
-    search_entry = tk.Entry(search_frame, font=("Arial", 14))
-    search_entry.pack(side="left", padx=5, fill="x", expand=True)
+        # Extraire les descripteurs SIFT
+        keypoints_list, descriptors_list = extract_sift_features(images)
 
-    next_button = tk.Button(search_frame, text="\u2192", font=("Arial", 14))
-    next_button.pack(side="right", padx=5)
+        # Créer le modèle Bag of Words
+        n_words = min(50, len(descriptors_list))  # Le nombre de "mots visuels" que nous souhaitons
+        bow_model = create_bow(descriptors_list, n_words=n_words)
 
-    notebook = ttk.Notebook(frame)
-    notebook.pack(fill="both", expand=True)
+        # Calcul des histogrammes BoW pour chaque image
+        histograms = get_bow_histograms(descriptors_list, bow_model)
 
-    # Fonction pour afficher les images d'un sous-dossier
-    def display_images_for_folder(folder_name, images):
-        folder_frame = tk.Frame(notebook)
-        notebook.add(folder_frame, text=folder_name)
+        # Normalisation des histogrammes
+        scaler = StandardScaler()
+        histograms_scaled = scaler.fit_transform(histograms)
 
-        canvas = tk.Canvas(folder_frame, width=800, height=400, bg="white")
-        canvas.pack(fill="both", expand=True)
+        # Réduire la dimensionnalité pour la visualisation
+        n_components = min(2, histograms_scaled.shape[0], histograms_scaled.shape[1])
+        pca = PCA(n_components=n_components)
+        histograms_pca = pca.fit_transform(histograms_scaled)
 
-        images_cache = []
-        current_index = [0]
+        # Clustering avec DBSCAN sur les histogrammes BoW
+        clusters = dbscan_clustering(histograms_scaled)
 
-        def update_images_around(index):
-            canvas.delete("all")
-            images_cache.clear()
+        # Trouver l'indice de l'image originale
+        original_index = image_paths.index(original_image_path)
 
-            start_index = max(0, index[0] - 4)
-            end_index = min(len(images), index[0] + 5)
-            images_to_display = images[start_index:end_index]
+        # Visualisation des résultats
+        if histograms_pca.shape[1] == 1:
+            histograms_pca = np.hstack((histograms_pca, np.zeros((histograms_pca.shape[0], 1))))
+        visualize_results(histograms_pca, clusters, image_paths, original_index)
 
-            for i, image_path in enumerate(images_to_display):
-                try:
-                    img = Image.open(image_path).resize((200, 200), Image.Resampling.LANCZOS)
-                    photo = ImageTk.PhotoImage(img)
-                    images_cache.append(photo)
+    # Créer un canvas avec scroll
+    canvas = tk.Canvas(frame)
+    scrollbar = tk.Scrollbar(frame, orient="vertical", command=canvas.yview)
+    scrollable_frame = tk.Frame(canvas)
 
-                    x_position = 200 * (i - (index[0] - start_index)) + 100
-                    canvas.create_image(x_position, 200, image=photo, anchor="center")
+    scrollable_frame.bind(
+        "<Configure>",
+        lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+    )
 
-                    # Ajouter un rectangle rouge autour de l'image active
-                    if i == (index[0] - start_index):
-                        canvas.create_rectangle(x_position + 700, 100, x_position + 900, 300, outline="red", width=3)
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    canvas.configure(yscrollcommand=scrollbar.set)
 
-                    # Associer un clic pour ouvrir les détails
-                    canvas.tag_bind("current", "<Button-1>", lambda e, path=image_path: show_image_detail(path))
+    canvas.pack(side="left", fill="both", expand=True)
+    scrollbar.pack(side="right", fill="y")
 
-                except Exception as e:
-                    print(f"Erreur lors du chargement de l'image {images[index[0]]}: {e}")
+    # Afficher les boutons et les images pour chaque fichier image
+    for image_file in image_files:
+        try:
+            img = Image.open(image_file).resize((100, 100), Image.Resampling.LANCZOS)
+            photo = ImageTk.PhotoImage(img)
 
-        def previous_image():
-            if current_index[0] > 0:
-                current_index[0] -= 1
-                update_images_around(current_index)
+            frame_row = tk.Frame(scrollable_frame)
+            frame_row.pack(pady=5, fill="x")
 
-        def next_image():
-            if current_index[0] < len(images) - 1:
-                current_index[0] += 1
-                update_images_around(current_index)
+            img_label = tk.Label(frame_row, image=photo)
+            img_label.image = photo  # Préserver une référence pour éviter le garbage collector
+            img_label.pack(side="left", padx=5)
 
-        prev_button.config(command=previous_image)
-        next_button.config(command=next_image)
+            button = tk.Button(frame_row, text=os.path.basename(image_file), command=lambda path=image_file: show_heatmap(path), font=("Arial", 12))
+            button.pack(side="left", padx=5)
 
-        # Fonction de défilement horizontal
-        def on_scroll(event):
-            if event.delta > 0:
-                # Molette vers le haut = image précédente
-                if current_index[0] > 0:
-                    current_index[0] -= 1
-                    update_images_around(current_index)
-            elif event.delta < 0:
-                # Molette vers le bas = image suivante
-                if current_index[0] < len(images) - 1:
-                    current_index[0] += 1
-                    update_images_around(current_index)
-
-        # Bind pour la molette de la souris
-        canvas.bind_all("<MouseWheel>", on_scroll)
-
-        if images:
-            update_images_around(current_index)
-
-    for folder_name, images in images_by_folder.items():
-        if images:
-            display_images_for_folder(folder_name, images)
-
-    # Fonction de recherche
-    def filter_images():
-        query = search_entry.get().lower()
-        filtered_images = []
-        for folder_name, images in images_by_folder.items():
-            for image_path in images:
-                if query in os.path.basename(image_path).lower():
-                    filtered_images.append(image_path)
-        return filtered_images
-
-    # Liste des résultats
-    result_listbox = tk.Listbox(frame, font=("Arial", 14), height=5)
-    result_listbox.pack(pady=10, fill="x")
-
-    def update_result_list():
-        result_listbox.delete(0, tk.END)
-        filtered_images = filter_images()
-        for image_path in filtered_images:
-            result_listbox.insert(tk.END, os.path.basename(image_path))
-
-    search_button = tk.Button(search_frame, text="Chercher", font=("Arial", 14), command=update_result_list)
-    search_button.pack(side="right", padx=5)
-
-    def on_image_select(event):
-        selected_index = result_listbox.curselection()
-        if selected_index:
-            selected_image = result_listbox.get(selected_index)
-            for folder_name, images in images_by_folder.items():
-                for image_path in images:
-                    if os.path.basename(image_path) == selected_image:
-                        # Mettre à jour la heatmap pour afficher l'image sélectionnée
-                        # (Cette partie dépend de la structure de votre code existant)
-                        # Par exemple, vous pouvez appeler une fonction pour afficher l'image dans la heatmap
-                        # display_selected_image(image_path)
-                        break
-
-    result_listbox.bind('<<ListboxSelect>>', on_image_select)
+        except Exception as e:
+            print(f"Erreur lors du chargement de l'image {image_file}: {e}")

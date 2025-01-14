@@ -1,3 +1,8 @@
+import os
+
+# Set the number of cores to use
+os.environ["LOKY_MAX_CPU_COUNT"] = "4"  # Replace 4 with the number of cores you want to use
+
 from menu import create_app_window  # type: ignore
 
 def main():
