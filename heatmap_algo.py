@@ -12,17 +12,28 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 # 1. Chargement et prétraitement des images
 def load_and_preprocess_images(image_paths, target_size=(64, 64)):
-    images = []
-    for path in image_paths:
-        img = imread(path, as_gray=True)  # Charge en niveaux de gris
-        img_resized = resize(img, target_size)  # Redimensionne
-        images.append(img_resized)
-    return np.array(images)
+    image_paths = []
+    for root, _, files in os.walk(folder_path):
+        for file in files:
+            if file.endswith(('.jpg', '.png', '.jpeg')):
+                image_paths.append(os.path.join(root, file))
 
-# Exemple avec des chemins fictifs
-image_paths = ["images\\4781_134_img_12.jpg", "images\\4021_006_img_02.jpg", "images\\4781_385_img_19.jpg", "images\\bo_resc3462_0450_lettrine_01.jpg"]
-data = load_and_preprocess_images(image_paths)
-labels = [f"Lettrine {i}" for i in range(len(data))]
+    if not image_paths:
+        raise ValueError(f"Aucune image trouvée dans le dossier {folder_path}.")
+
+    # Chargement et prétraitement des images
+    images = []
+    labels = []
+    for path in image_paths:
+        try:
+            img = imread(path, as_gray=True)  # Charge en niveaux de gris
+            img_resized = resize(img, target_size)  # Redimensionne
+            images.append(img_resized)
+            labels.append(os.path.basename(path))  # Nom de fichier comme label
+        except Exception as e:
+            print(f"Erreur lors du chargement de {path}: {e}")
+
+    return np.array(images), labels, image_paths
 
 # 2. Extraction des descripteurs SIFT
 def extract_sift_features(images):
