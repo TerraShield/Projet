@@ -23,7 +23,6 @@ def setup_heatmap_page(frame, selected_folder):
         no_images_label.pack(pady=20)
         return
 
-    # Fonction pour afficher le heatmap d'une image
     def show_heatmap(original_image_path):
         images, labels, image_paths = load_and_preprocess_images(image_files)
 
@@ -31,7 +30,7 @@ def setup_heatmap_page(frame, selected_folder):
         keypoints_list, descriptors_list = extract_sift_features(images)
 
         # Créer le modèle Bag of Words
-        n_words = min(50, len(descriptors_list))  # Le nombre de "mots visuels" que nous souhaitons
+        n_words = min(50, len(descriptors_list))
         bow_model = create_bow(descriptors_list, n_words=n_words)
 
         # Calcul des histogrammes BoW pour chaque image
@@ -42,8 +41,7 @@ def setup_heatmap_page(frame, selected_folder):
         histograms_scaled = scaler.fit_transform(histograms)
 
         # Réduire la dimensionnalité pour la visualisation
-        n_components = min(2, histograms_scaled.shape[0], histograms_scaled.shape[1])
-        pca = PCA(n_components=n_components)
+        pca = PCA(n_components=2)
         histograms_pca = pca.fit_transform(histograms_scaled)
 
         # Clustering avec DBSCAN sur les histogrammes BoW
@@ -53,8 +51,6 @@ def setup_heatmap_page(frame, selected_folder):
         original_index = image_paths.index(original_image_path)
 
         # Visualisation des résultats
-        if histograms_pca.shape[1] == 1:
-            histograms_pca = np.hstack((histograms_pca, np.zeros((histograms_pca.shape[0], 1))))
         visualize_results(histograms_pca, clusters, image_paths, original_index)
 
     # Créer un canvas avec scroll
@@ -86,8 +82,14 @@ def setup_heatmap_page(frame, selected_folder):
             img_label.image = photo  # Préserver une référence pour éviter le garbage collector
             img_label.pack(side="left", padx=5)
 
-            button = tk.Button(frame_row, text=os.path.basename(image_file), command=lambda path=image_file: show_heatmap(path), font=("Arial", 12))
+            button = tk.Button(frame_row, text="Afficher Heatmap", command=lambda path=image_file: show_heatmap(path), font=("Arial", 12))
             button.pack(side="left", padx=5)
 
         except Exception as e:
             print(f"Erreur lors du chargement de l'image {image_file}: {e}")
+
+    # Lier la molette de la souris pour le défilement
+    def on_mouse_wheel(event):
+        canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    frame.bind_all("<MouseWheel>", on_mouse_wheel)

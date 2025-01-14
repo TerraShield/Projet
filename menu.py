@@ -23,22 +23,13 @@ def create_app_window():
 
     # Fonction pour rafraîchir les onglets `Liste`, `Clustering`, `Histogramme` et `Heatmap`
     def refresh_tabs():
-        # Effacer les onglets existants
-        for widget in frame2.winfo_children():
-            widget.destroy()
-        create_page2(frame2, root, selected_folder.get())
-
-        for widget in frame3.winfo_children():
-            widget.destroy()
-        setup_cluster_page(frame3, selected_folder.get())
-
-        for widget in frame4.winfo_children():
-            widget.destroy()
-        setup_histogram_page(frame4, selected_folder.get())  # Passe le dossier sélectionné
-
-        for widget in frame5.winfo_children():
-            widget.destroy()
-        setup_heatmap_page(frame5, selected_folder.get())  # Passe le dossier sélectionné
+        for frame, setup_function in [(frame2, create_page2), (frame3, setup_cluster_page), (frame4, setup_histogram_page), (frame5, setup_heatmap_page)]:
+            for widget in frame.winfo_children():
+                widget.destroy()
+            if setup_function == create_page2:
+                setup_function(frame, root, selected_folder.get())
+            else:
+                setup_function(frame, selected_folder.get())
 
     # Création du Notebook pour les onglets
     notebook = ttk.Notebook(root)
@@ -51,14 +42,9 @@ def create_app_window():
     # Onglet 1 : Menu principal
     frame1 = tk.Frame(notebook)
     notebook.add(frame1, text="Menu")
-    menu_label = tk.Label(frame1, text="Bienvenue dans le Menu Principal", font=("Arial", 24, "bold"))
-    menu_label.pack(pady=20)
-
-    select_button = tk.Button(frame1, text="Sélectionner un dossier", command=select_folder, font=("Arial", 14))
-    select_button.pack(pady=10)
-
-    selected_folder_label = tk.Label(frame1, textvariable=selected_folder, font=("Arial", 12), fg="blue")
-    selected_folder_label.pack(pady=5)
+    tk.Label(frame1, text="Bienvenue dans le Menu Principal", font=("Arial", 24, "bold")).pack(pady=20)
+    tk.Button(frame1, text="Sélectionner un dossier", command=select_folder, font=("Arial", 14)).pack(pady=10)
+    tk.Label(frame1, textvariable=selected_folder, font=("Arial", 12), fg="blue").pack(pady=5)
 
     # Onglet 2 : Liste des images
     frame2 = tk.Frame(notebook)

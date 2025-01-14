@@ -1,10 +1,10 @@
 import os
 import numpy as np
 from PIL import Image, ImageTk
-from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering, SpectralClustering
+from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
+from sklearn.metrics.pairwise import cosine_similarity
 import tkinter as tk
 from tkinter import ttk
 from detail_image import show_image_detail
@@ -14,11 +14,9 @@ def setup_cluster_page(frame, selected_folder):
     image_folder = selected_folder if selected_folder else "images"
 
     # Récupérer les images par sous-dossier
-    image_paths = []
-    for root_dir, _, files in os.walk(image_folder):
-        for file in files:
-            if file.endswith(('.jpg', '.png', '.jpeg')):
-                image_paths.append(os.path.join(root_dir, file))
+    image_paths = [os.path.join(root_dir, file)
+                   for root_dir, _, files in os.walk(image_folder)
+                   for file in files if file.endswith(('.jpg', '.png', '.jpeg'))]
 
     if not image_paths:
         error_label = tk.Label(frame, text="Aucune image trouvée dans le dossier sélectionné.", font=("Arial", 16), fg="red")
@@ -43,7 +41,7 @@ def setup_cluster_page(frame, selected_folder):
     images_scaled = scaler.fit_transform(images)
 
     # Réduire la dimensionnalité pour le clustering
-    pca = PCA(n_components=50)
+    pca = PCA(n_components=min(50, images_scaled.shape[0], images_scaled.shape[1]))
     images_pca = pca.fit_transform(images_scaled)
 
     # Fonction pour appliquer le clustering et afficher les résultats
@@ -52,7 +50,7 @@ def setup_cluster_page(frame, selected_folder):
         for widget in frame.winfo_children():
             if widget not in [filter_frame, reload_button, cluster_label, cluster_entry]:
                 widget.destroy()
-        
+
         # Utiliser des caractéristiques basées sur les couleurs et les PCA pour le clustering
         color_features = []
         for path in image_paths:
@@ -64,27 +62,16 @@ def setup_cluster_page(frame, selected_folder):
                 print(f"Erreur lors de l'extraction des caractéristiques de {path}: {e}")
 
         color_features = np.array(color_features)
-        scaler = StandardScaler()
         color_features_scaled = scaler.fit_transform(color_features)
 
         combined_features = np.hstack((color_features_scaled, images_pca))
 
         # Appliquer le clustering avec scikit-learn
-        clustering_model = KMeans(n_clusters=n_clusters, random_state=42)
+        clustering_model = KMeans(n_clusters=n_clusters, random_state=42, n_init=20 if improve else 10, max_iter=500 if improve else 300)
         clusters = clustering_model.fit_predict(combined_features)
-
-        # Améliorer le clustering si nécessaire
-        if improve:
-            clustering_model = KMeans(n_clusters=n_clusters, random_state=42, n_init=20, max_iter=500)
-            clusters = clustering_model.fit_predict(combined_features)
 
         # Vérifier le nombre de clusters distincts trouvés
         unique_clusters = len(set(clusters))
-        max_clusters = 10  # Limiter le nombre de clusters à 10
-        if unique_clusters > max_clusters:
-            print(f"Warning: Number of distinct clusters ({unique_clusters}) exceeds the limit ({max_clusters}). Reducing to {max_clusters}.")
-            unique_clusters = max_clusters
-
         print(f"Number of distinct clusters found: {unique_clusters}")
 
         # Créer un Notebook pour les clusters
@@ -111,17 +98,17 @@ def setup_cluster_page(frame, selected_folder):
             canvas.pack(side="left", fill="both", expand=True)
             scrollbar.pack(side="right", fill="y")
 
-            # Sort images within the cluster based on similarity to the first image in the cluster
+            # Sort images within the cluster based on similarity
             cluster_images = [image_paths[i] for i in range(len(image_paths)) if clusters[i] == cluster_id]
             cluster_features = [combined_features[i] for i in range(len(image_paths)) if clusters[i] == cluster_id]
 
             if cluster_features:
-                reference_feature = cluster_features[0]
-                similarities = [np.linalg.norm(reference_feature - feature) for feature in cluster_features]
-                sorted_images = [img for _, img in sorted(zip(similarities, cluster_images))]
+                similarity_matrix = cosine_similarity(cluster_features)
+                sorted_indices = np.argsort(-similarity_matrix[0])  # Sort by similarity to the first image
 
                 row, col = 0, 0
-                for image_path in sorted_images:
+                for idx in sorted_indices:
+                    image_path = cluster_images[idx]
                     try:
                         img = Image.open(image_path).resize((100, 100), Image.Resampling.LANCZOS)
                         photo = ImageTk.PhotoImage(img)
@@ -145,7 +132,7 @@ def setup_cluster_page(frame, selected_folder):
             def on_mouse_wheel(event, canvas=canvas):
                 canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-            canvas.bind_all("<MouseWheel>", on_mouse_wheel)
+            frame.bind_all("<MouseWheel>", on_mouse_wheel)
 
     # Ajouter des options de filtre
     filter_frame = tk.Frame(frame)

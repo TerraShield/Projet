@@ -45,54 +45,47 @@ def extract_sift_features(images):
     all_descriptors = []
     
     for img in images:
-        # Convertit l'image en format approprié pour OpenCV (BGR)
-        img_bgr = cv2.cvtColor((img * 255).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+        img_bgr = cv2.cvtColor((img * 255).astype(np.uint8), cv2.COLOR_GRAY2BGR)  # Convertit l'image en format approprié pour OpenCV (BGR)
+        keypoints, descriptors = sift.detectAndCompute(img_bgr, None)  # Détecte les keypoints et calcule les descripteurs SIFT
         
-        # Détecte les keypoints et calcule les descripteurs SIFT
-        keypoints, descriptors = sift.detectAndCompute(img_bgr, None)
-        
-        if descriptors is not None:
-            all_keypoints.append(keypoints)
-            all_descriptors.append(descriptors)
-        else:
-            # Si aucun descripteur n'est trouvé, on met un tableau vide
-            all_keypoints.append([])
-            all_descriptors.append(np.array([]))
+        all_keypoints.append(keypoints)
+        all_descriptors.append(descriptors if descriptors is not None else np.array([]))
     
     return all_keypoints, all_descriptors
 
 # 3. Création du modèle Bag of Words (BoW)
 def create_bow(descriptors_list, n_words=50):
-    # Fusionner tous les descripteurs de toutes les images
-    all_descriptors = np.vstack(descriptors_list)
-    
-    # Utiliser KMeans pour créer les "mots visuels"
-    kmeans = KMeans(n_clusters=n_words, random_state=42)
+    all_descriptors = np.vstack(descriptors_list)  # Fusionner tous les descripteurs de toutes les images
+    kmeans = KMeans(n_clusters=n_words, random_state=42)  # Utiliser KMeans pour créer les "mots visuels"
     kmeans.fit(all_descriptors)
-    
     return kmeans
 
 # 4. Représenter chaque image par un histogramme de mots visuels
 def get_bow_histograms(descriptors_list, bow_model):
     histograms = []
-    
     for descriptors in descriptors_list:
-        # Attribuer chaque descripteur à un mot visuel
-        words = bow_model.predict(descriptors)
-        
-        # Créer un histogramme de fréquence des mots visuels
+        words = bow_model.predict(descriptors)  # Attribuer chaque descripteur à un mot visuel
         histogram = np.zeros(len(bow_model.cluster_centers_))
         for word in words:
             histogram[word] += 1
-        
         histograms.append(histogram)
-    
     return np.array(histograms)
 
 # 5. Clustering avec DBSCAN sur les histogrammes BoW
-def dbscan_clustering(histograms_scaled):
-    dbscan = DBSCAN(eps=0.3, min_samples=2, metric='euclidean')  # Paramètres à ajuster selon les données
-    clusters = dbscan.fit_predict(histograms_scaled)
+def dbscan_clustering(histograms_scaled, eps=0.3, min_samples=2):
+    similarity_matrix = cosine_similarity(histograms_scaled)  # Calculer la matrice de similarité
+    distance_matrix = 1 - similarity_matrix  # Convertir la matrice de similarité en une matrice de distance
+    distance_matrix[distance_matrix < 0] = 0  # S'assurer qu'il n'y a pas de valeurs négatives dans la matrice de distance
+    dbscan = DBSCAN(eps=eps, min_samples=min_samples, metric='precomputed')  # Appliquer DBSCAN en utilisant la matrice de distance
+    clusters = dbscan.fit_predict(distance_matrix)
+    
+    # Reassign cluster -1 (noise points) to the nearest cluster
+    if -1 in clusters:
+        for i, cluster in enumerate(clusters):
+            if cluster == -1:
+                nearest_cluster = np.argmin(distance_matrix[i][clusters != -1])
+                clusters[i] = clusters[clusters != -1][nearest_cluster]
+    
     return clusters
 
 # 6. Visualisation des résultats
@@ -104,21 +97,15 @@ def visualize_results(histograms_pca, clusters, image_paths, original_index):
     colors = plt.cm.get_cmap('viridis', len(unique_clusters))
     for cluster in unique_clusters:
         cluster_points = histograms_pca[clusters == cluster]
-        if cluster == -1:
-            color = 'red'  # Noise points
-        else:
-            color = colors(cluster)
+        color = 'red' if cluster == -1 else colors(cluster)
         axes[0].scatter(cluster_points[:, 0], cluster_points[:, 1], color=color, label=f'Cluster {cluster}')
     
-    # Highlight the original image
     axes[0].scatter(histograms_pca[original_index, 0], histograms_pca[original_index, 1], color='blue', edgecolor='black', s=100, label='Original')
-
     axes[0].set_title("Clustering des lettrines avec DBSCAN")
     axes[0].set_xlabel("Feature 1")
     axes[0].set_ylabel("Feature 2")
     axes[0].legend()
-    cbar = fig.colorbar(plt.cm.ScalarMappable(cmap='viridis'), ax=axes[0])
-    cbar.set_label("Cluster")
+    fig.colorbar(plt.cm.ScalarMappable(cmap='viridis'), ax=axes[0]).set_label("Cluster")
 
     # b) Matrice de similarité entre les histogrammes BoW
     similarity_matrix = cosine_similarity(histograms_pca)
@@ -126,91 +113,61 @@ def visualize_results(histograms_pca, clusters, image_paths, original_index):
     axes[1].set_title("Matrice de similarité")
     axes[1].set_xlabel("Index des lettrines")
     axes[1].set_ylabel("Index des lettrines")
-    cbar2 = fig.colorbar(im, ax=axes[1])
-    cbar2.set_label("Similarité")
-
-    # Fonction de clic pour afficher l'image
-    click_threshold = 1.2  # Ajuste ce seuil selon tes besoins
+    fig.colorbar(im, ax=axes[1]).set_label("Similarité")
 
     def on_click(event):
         if event.inaxes == axes[0]:  # Vérifie si le clic est dans l'axe du graphique PCA
             x_click, y_click = event.xdata, event.ydata
-            
-            # Calcul des distances entre le clic et tous les points
             distances = np.sqrt((histograms_pca[:, 0] - x_click)**2 + (histograms_pca[:, 1] - y_click)**2)
-            
-            # Trouve l'indice du point le plus proche
             nearest_point_idx = np.argmin(distances)
-            
-            # Vérifie si la distance est inférieure au seuil (clic "sur" le point)
-            if distances[nearest_point_idx] < click_threshold:
-                # Affiche l'image associée à ce point
+            if distances[nearest_point_idx] < 1.2:  # Ajuste ce seuil selon tes besoins
                 img = mpimg.imread(image_paths[nearest_point_idx])  # Charge l'image
                 plt.figure(figsize=(6, 6))
                 plt.imshow(img, cmap='gray')
                 plt.title(f"Image : {image_paths[nearest_point_idx]}")
                 plt.axis('off')  # Désactive les axes pour l'affichage de l'image
                 plt.show()
+        elif event.inaxes == axes[1]:  # Vérifie si le clic est dans l'axe de la matrice de similarité
+            x_click, y_click = int(event.xdata), int(event.ydata)
+            if 0 <= x_click < len(image_paths) and 0 <= y_click < len(image_paths):
+                similarity = similarity_matrix[y_click, x_click]
+                img1 = mpimg.imread(image_paths[y_click])
+                img2 = mpimg.imread(image_paths[x_click])
+                fig, ax = plt.subplots(1, 2, figsize=(12, 6))
+                ax[0].imshow(img1, cmap='gray')
+                ax[0].axis('off')
+                ax[1].imshow(img2, cmap='gray')
+                ax[1].axis('off')
+                plt.suptitle(f"Similarité: {similarity:.2f}")
+                plt.show()
 
-    # Connecte la fonction de clic à l'événement
     fig.canvas.mpl_connect('button_press_event', on_click)
 
-    # Ajout d'annotations interactives avec mplcursors
     cursor = mplcursors.cursor(im, hover=True)
-
     @cursor.connect("add")
     def on_add(sel):
-        # Récupération des coordonnées (lignes et colonnes) de la cellule survolée
         i, j = int(sel.target[0]), int(sel.target[1])
-        # Ajout des informations sur les lettrines comparées et la similarité
         sel.annotation.set_text(f"Similarité: {similarity_matrix[i, j]:.2f}")
-        sel.annotation.set_backgroundcolor('white')  # Optionnel : rendre le fond blanc pour plus de lisibilité
+        sel.annotation.set_backgroundcolor('white')
 
-    # Fonction pour activer le zoom avec la molette, centré sur le curseur
     def zoom(event):
-        ax = event.inaxes  # Récupère les axes actuels
+        ax = event.inaxes
         if ax is None:
             return
-        
-        # Obtenir les coordonnées de la position de la souris en termes de données de l'axe
         x_mouse, y_mouse = event.xdata, event.ydata
-        
-        # Si les coordonnées sont invalides (ex. si la souris est en dehors du graphe), ne pas zoomer
         if x_mouse is None or y_mouse is None:
             return
-        
-        # Obtenir les limites actuelles des axes
         xlim, ylim = ax.get_xlim(), ax.get_ylim()
-        
-        # Calcul du facteur de zoom en fonction de la direction de la molette
-        scale_factor = 2.0 # Augmenter cette valeur pour un zoom plus rapide
-        if event.button == 'up':  # Zoom avant (molette vers le haut)
-            factor = 1 / scale_factor
-        elif event.button == 'down':  # Zoom arrière (molette vers le bas)
-            factor = scale_factor
-        else:
-            return
-        
-        # Calcul des nouvelles limites centrées sur la souris
-        width = xlim[1] - xlim[0]
-        height = ylim[1] - ylim[0]
-        
-        # Nouvelles limites
-        new_width = width * factor
-        new_height = height * factor
-        
-        # Calcul des nouvelles limites x et y en centrant autour du curseur
+        scale_factor = 2.0
+        factor = 1 / scale_factor if event.button == 'up' else scale_factor
+        width, height = xlim[1] - xlim[0], ylim[1] - ylim[0]
+        new_width, new_height = width * factor, height * factor
         new_xlim = [x_mouse - new_width * (x_mouse - xlim[0]) / width, x_mouse + new_width * (xlim[1] - x_mouse) / width]
         new_ylim = [y_mouse - new_height * (y_mouse - ylim[0]) / height, y_mouse + new_height * (ylim[1] - y_mouse) / height]
-        
-        # Appliquer les nouvelles limites
         ax.set_xlim(new_xlim)
         ax.set_ylim(new_ylim)
-        fig.canvas.draw()  # Redessine le graphique avec les nouvelles limites
+        fig.canvas.draw()
 
-    # Connecte l'événement de zoom à la fonction
     fig.canvas.mpl_connect('scroll_event', zoom)
-
-    # Ajustement des espaces entre les graphiques
     plt.tight_layout()
     plt.show()

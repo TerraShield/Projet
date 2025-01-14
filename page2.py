@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
 import os
-import subprocess
 from detail_image import show_image_detail
 
 def create_page2(frame, root, selected_folder):
@@ -18,10 +17,7 @@ def create_page2(frame, root, selected_folder):
     images_by_folder = {}
     for root_dir, _, files in os.walk(image_folder):
         folder_name = os.path.relpath(root_dir, image_folder)
-        images_by_folder[folder_name] = []
-        for file in files:
-            if file.endswith(('.jpg', '.png', '.jpeg')):
-                images_by_folder[folder_name].append(os.path.join(root_dir, file))
+        images_by_folder[folder_name] = [os.path.join(root_dir, file) for file in files if file.endswith(('.jpg', '.png', '.jpeg'))]
 
     if not any(images_by_folder.values()):
         no_images_label = tk.Label(frame, text="Aucune image disponible dans le dossier sélectionné.", font=("Arial", 16), fg="red")
@@ -81,11 +77,8 @@ def create_page2(frame, root, selected_folder):
                 label.image = photo  # Préserver une référence pour éviter le garbage collector
                 label.grid(row=row, column=col, padx=10, pady=10)
 
-                # Associer un clic gauche pour ouvrir l'image avec le lecteur par défaut
-                label.bind("<Button-1>", lambda e, path=image_file: subprocess.run(["start", path], shell=True))
-
-                # Associer un clic droit pour afficher les détails de l'image
-                label.bind("<Button-3>", lambda e, path=image_file: show_image_detail(path))
+                # Associer un clic gauche pour afficher les détails de l'image
+                label.bind("<Button-1>", lambda e, path=image_file: show_image_detail(path))
 
                 col += 1
                 if col > 4:  # 5 images par ligne
@@ -99,7 +92,7 @@ def create_page2(frame, root, selected_folder):
         def on_mouse_wheel(event):
             canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-        canvas.bind_all("<MouseWheel>", on_mouse_wheel)
+        frame.bind_all("<MouseWheel>", on_mouse_wheel)
 
     def display_images(images_by_folder):
         for folder_name, images in images_by_folder.items():
