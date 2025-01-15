@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 import os
 from PIL import Image, ImageTk
 import matplotlib.pyplot as plt
@@ -9,9 +10,13 @@ def setup_histogram_page(frame, selected_folder):
         tk.Label(frame, text=f"Le dossier '{selected_folder}' est introuvable.", font=("Arial", 16), fg="red").pack(pady=20)
         return
 
-    image_files = [os.path.join(selected_folder, f) for f in os.listdir(selected_folder) if f.endswith(('.jpg', '.png', '.jpeg'))]
+    # Récupérer toutes les images par sous-dossier
+    images_by_folder = {}
+    for root_dir, _, files in os.walk(selected_folder):
+        folder_name = os.path.relpath(root_dir, selected_folder)
+        images_by_folder[folder_name] = [os.path.join(root_dir, file) for file in files if file.endswith(('.jpg', '.png', '.jpeg'))]
 
-    if not image_files:
+    if not any(images_by_folder.values()):
         tk.Label(frame, text="Aucune image disponible dans le dossier sélectionné.", font=("Arial", 16), fg="red").pack(pady=20)
         return
 
@@ -26,36 +31,80 @@ def setup_histogram_page(frame, selected_folder):
             plt.bar(range(256), histogram, color=color, alpha=0.6)
         plt.show()
 
-    canvas = tk.Canvas(frame)
-    scrollbar = tk.Scrollbar(frame, orient="vertical", command=canvas.yview)
-    scrollable_frame = tk.Frame(canvas)
+    # Ajouter une barre de recherche
+    search_frame = tk.Frame(frame)
+    search_frame.pack(pady=10, fill="x")
 
-    scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-    canvas.configure(yscrollcommand=scrollbar.set)
+    search_label = tk.Label(search_frame, text="Rechercher :", font=("Arial", 14))
+    search_label.pack(side="left", padx=5)
 
-    canvas.pack(side="left", fill="both", expand=True)
-    scrollbar.pack(side="right", fill="y")
+    search_entry = tk.Entry(search_frame, font=("Arial", 14))
+    search_entry.pack(side="left", padx=5, fill="x", expand=True)
 
-    for image_file in image_files:
-        try:
-            img = Image.open(image_file).resize((100, 100), Image.Resampling.LANCZOS)
-            photo = ImageTk.PhotoImage(img)
+    def filter_images():
+        query = search_entry.get().lower()
+        filtered = {folder: [img for img in images if query in os.path.basename(img).lower()]
+                    for folder, images in images_by_folder.items()}
+        display_images(filtered)
 
-            frame_row = tk.Frame(scrollable_frame)
-            frame_row.pack(pady=5, fill="x")
+    search_button = tk.Button(search_frame, text="Chercher", font=("Arial", 14), command=filter_images)
+    search_button.pack(side="left", padx=5)
 
-            img_label = tk.Label(frame_row, image=photo)
-            img_label.image = photo  # Préserver une référence pour éviter le garbage collector
-            img_label.pack(side="left", padx=5)
+    # Créer un Notebook pour les sous-dossiers
+    notebook = ttk.Notebook(frame)
+    notebook.pack(fill="both", expand=True)
 
-            button = tk.Button(frame_row, text="Afficher Histogramme", command=lambda path=image_file: show_histogram(path), font=("Arial", 12))
-            button.pack(side="left", padx=5)
+    def display_images_for_folder(folder_name, images):
+        folder_frame = tk.Frame(notebook)
+        notebook.add(folder_frame, text=folder_name)
 
-        except Exception as e:
-            print(f"Erreur lors du chargement de l'image {image_file}: {e}")
+        # Ajouter un canvas avec scroll pour chaque dossier
+        canvas = tk.Canvas(folder_frame)
+        scrollbar = tk.Scrollbar(folder_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas)
 
-    def on_mouse_wheel(event):
-        canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
 
-    frame.bind_all("<MouseWheel>", on_mouse_wheel)
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        row, col = 0, 0
+        for image_file in images:
+            try:
+                img = Image.open(image_file).resize((150, 150), Image.Resampling.LANCZOS)
+                photo = ImageTk.PhotoImage(img)
+
+                label = tk.Label(scrollable_frame, image=photo)
+                label.image = photo  # Préserver une référence pour éviter le garbage collector
+                label.grid(row=row, column=col, padx=10, pady=10)
+
+                # Associer un clic gauche pour afficher les détails de l'image
+                label.bind("<Button-1>", lambda e, path=image_file: show_histogram(path))
+
+                col += 1
+                if col > 4:  # 5 images par ligne
+                    col = 0
+                    row += 1
+
+            except Exception as e:
+                print(f"Erreur lors du chargement de l'image {image_file}: {e}")
+
+        # Lier la molette de la souris pour le défilement
+        def on_mouse_wheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        frame.bind_all("<MouseWheel>", on_mouse_wheel)
+
+    def display_images(images_by_folder):
+        for folder_name, images in images_by_folder.items():
+            if images:  # Ajouter un onglet uniquement si le dossier contient des images
+                display_images_for_folder(folder_name, images)
+
+    # Afficher toutes les images organisées par sous-dossier initialement
+    display_images(images_by_folder)

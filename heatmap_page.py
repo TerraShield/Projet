@@ -9,22 +9,23 @@ from sklearn.decomposition import PCA
 from heatmap_algo import load_and_preprocess_images, extract_sift_features, create_bow, get_bow_histograms, dbscan_clustering, visualize_results
 
 def setup_heatmap_page(frame, selected_folder):
-    """Configure un onglet pour afficher les heatmaps des images."""
+    """Configure une page pour afficher les images et leurs heatmaps."""
     if not os.path.exists(selected_folder):
-        error_label = tk.Label(frame, text=f"Le dossier '{selected_folder}' est introuvable.", font=("Arial", 16), fg="red")
-        error_label.pack(pady=20)
+        tk.Label(frame, text=f"Le dossier '{selected_folder}' est introuvable.", font=("Arial", 16), fg="red").pack(pady=20)
         return
 
-    # Récupérer toutes les images du dossier
-    image_files = [os.path.join(selected_folder, f) for f in os.listdir(selected_folder) if f.endswith(('.jpg', '.png', '.jpeg'))]
+    # Récupérer toutes les images par sous-dossier
+    images_by_folder = {}
+    for root_dir, _, files in os.walk(selected_folder):
+        folder_name = os.path.relpath(root_dir, selected_folder)
+        images_by_folder[folder_name] = [os.path.join(root_dir, file) for file in files if file.endswith(('.jpg', '.png', '.jpeg'))]
 
-    if not image_files:
-        no_images_label = tk.Label(frame, text="Aucune image disponible dans le dossier sélectionné.", font=("Arial", 16), fg="red")
-        no_images_label.pack(pady=20)
+    if not any(images_by_folder.values()):
+        tk.Label(frame, text="Aucune image disponible dans le dossier sélectionné.", font=("Arial", 16), fg="red").pack(pady=20)
         return
 
-    def show_heatmap(original_image_path):
-        images, labels, image_paths = load_and_preprocess_images(image_files)
+    def show_heatmap(image_path):
+        images, _, image_paths = load_and_preprocess_images([img for imgs in images_by_folder.values() for img in imgs])
 
         # Extraire les descripteurs SIFT
         keypoints_list, descriptors_list = extract_sift_features(images)
@@ -48,48 +49,97 @@ def setup_heatmap_page(frame, selected_folder):
         clusters = dbscan_clustering(histograms_scaled)
 
         # Trouver l'indice de l'image originale
-        original_index = image_paths.index(original_image_path)
+        original_index = image_paths.index(image_path)
 
         # Visualisation des résultats
         visualize_results(histograms_pca, clusters, image_paths, original_index)
 
-    # Créer un canvas avec scroll
-    canvas = tk.Canvas(frame)
-    scrollbar = tk.Scrollbar(frame, orient="vertical", command=canvas.yview)
-    scrollable_frame = tk.Frame(canvas)
+    # Ajouter une barre de recherche
+    search_frame = tk.Frame(frame)
+    search_frame.pack(pady=10, fill="x")
 
-    scrollable_frame.bind(
-        "<Configure>",
-        lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-    )
+    search_label = tk.Label(search_frame, text="Rechercher :", font=("Arial", 14))
+    search_label.pack(side="left", padx=5)
 
-    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-    canvas.configure(yscrollcommand=scrollbar.set)
+    search_entry = tk.Entry(search_frame, font=("Arial", 14))
+    search_entry.pack(side="left", padx=5, fill="x", expand=True)
 
-    canvas.pack(side="left", fill="both", expand=True)
-    scrollbar.pack(side="right", fill="y")
+    def filter_images():
+        query = search_entry.get().lower()
+        filtered = {folder: [img for img in images if query in os.path.basename(img).lower()]
+                    for folder, images in images_by_folder.items()}
+        display_images(filtered)
 
-    # Afficher les boutons et les images pour chaque fichier image
-    for image_file in image_files:
-        try:
-            img = Image.open(image_file).resize((100, 100), Image.Resampling.LANCZOS)
-            photo = ImageTk.PhotoImage(img)
+    search_button = tk.Button(search_frame, text="Chercher", font=("Arial", 14), command=filter_images)
+    search_button.pack(side="left", padx=5)
 
-            frame_row = tk.Frame(scrollable_frame)
-            frame_row.pack(pady=5, fill="x")
+    # Créer un Notebook pour les sous-dossiers
+    notebook = ttk.Notebook(frame)
+    notebook.pack(fill="both", expand=True)
 
-            img_label = tk.Label(frame_row, image=photo)
-            img_label.image = photo  # Préserver une référence pour éviter le garbage collector
-            img_label.pack(side="left", padx=5)
+    def animate_click(label):
+        """Créer une animation lors du clic sur une image."""
+        original_color = label.cget("bg")
+        label.config(bg="yellow")
+        label.after(200, lambda: label.config(bg=original_color))
 
-            button = tk.Button(frame_row, text="Afficher Heatmap", command=lambda path=image_file: show_heatmap(path), font=("Arial", 12))
-            button.pack(side="left", padx=5)
+    def display_images_for_folder(folder_name, images):
+        folder_frame = tk.Frame(notebook)
+        notebook.add(folder_frame, text=folder_name)
 
-        except Exception as e:
-            print(f"Erreur lors du chargement de l'image {image_file}: {e}")
+        # Ajouter un canvas avec scroll pour chaque dossier
+        canvas = tk.Canvas(folder_frame)
+        scrollbar = tk.Scrollbar(folder_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas)
 
-    # Lier la molette de la souris pour le défilement
-    def on_mouse_wheel(event):
-        canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
 
-    frame.bind_all("<MouseWheel>", on_mouse_wheel)
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        row, col = 0, 0
+        image_refs = []  # Stocker les références pour éviter le garbage collection
+
+        for image_file in images:
+            try:
+                img = Image.open(image_file).resize((150, 150), Image.Resampling.LANCZOS)
+                photo = ImageTk.PhotoImage(img)
+                image_refs.append(photo)  # Conserver une référence
+
+                label = tk.Label(scrollable_frame, image=photo, bg="white")
+                label.image = photo  # Préserver une référence pour éviter le garbage collector
+                label.grid(row=row, column=col, padx=10, pady=10)
+
+                # Associer un clic gauche pour afficher la heatmap avec animation
+                label.bind("<Button-1>", lambda e, path=image_file: [animate_click(label), show_heatmap(path)])
+
+                col += 1
+                if col > 4:  # 5 images par ligne
+                    col = 0
+                    row += 1
+
+            except Exception as e:
+                print(f"Erreur lors du chargement de l'image {image_file}: {e}")
+
+        # Lier la molette de la souris pour le défilement
+        def on_mouse_wheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        canvas.bind_all("<MouseWheel>", on_mouse_wheel)
+
+    def display_images(images_by_folder):
+        for folder_name, images in images_by_folder.items():
+            if images:  # Ajouter un onglet uniquement si le dossier contient des images
+                display_images_for_folder(folder_name, images)
+
+    # Afficher toutes les images organisées par sous-dossier initialement
+    display_images(images_by_folder)
+
+    if notebook.tabs():  # Vérifie si des onglets existent
+        notebook.select(0)  # S'assurer que la première page est affichée par défaut
