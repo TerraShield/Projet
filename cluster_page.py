@@ -4,13 +4,12 @@ from PIL import Image, ImageTk
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from sklearn.metrics.pairwise import cosine_similarity
 import tkinter as tk
 from tkinter import ttk
 from detail_image import show_image_detail
 
 def setup_cluster_page(frame, selected_folder):
-    """Configure une page de clustering avec des options de filtre."""
+    """Configure une page de clustering avec des options de filtre et de paramètres."""
     image_folder = selected_folder if selected_folder else "images"
 
     # Récupérer les images par sous-dossier
@@ -45,7 +44,7 @@ def setup_cluster_page(frame, selected_folder):
     images_pca = pca.fit_transform(images_scaled)
 
     # Fonction pour appliquer le clustering et afficher les résultats
-    def apply_clustering(algorithm, **params):
+    def apply_clustering(algorithm, clusters_count):
         for widget in frame.winfo_children():
             if widget not in [filter_frame, reload_button]:
                 widget.destroy()
@@ -53,19 +52,14 @@ def setup_cluster_page(frame, selected_folder):
         # Appliquer le clustering avec l'algorithme choisi
         if algorithm == 'KMeans':
             clustering_model = KMeans(
-                n_clusters=params.get('n_clusters', 5),  # Par défaut 5 clusters
+                n_clusters=clusters_count,  # Utilise le nombre de clusters fourni
                 random_state=42
             )
         elif algorithm == 'DBSCAN':
-            try:
-                clustering_model = DBSCAN(
-                    eps=params.get('eps', 0.5),
-                    min_samples=params.get('min_samples', 5)
-                )
-                clusters = clustering_model.fit_predict(images_pca)
-            except Exception as e:
-                tk.Label(frame, text=f"Erreur DBSCAN : {e}", font=("Arial", 16), fg="red").pack(pady=10)
-                return
+            clustering_model = DBSCAN(
+                eps=0.5,  # Paramètre par défaut
+                min_samples=clusters_count  # Utilise clusters_count comme min_samples
+            )
         else:
             tk.Label(frame, text="Algorithme non supporté.", font=("Arial", 16), fg="red").pack(pady=10)
             return
@@ -84,7 +78,7 @@ def setup_cluster_page(frame, selected_folder):
         unique_clusters = np.unique(clusters)
         for cluster_id in unique_clusters:
             cluster_frame = tk.Frame(notebook)
-            notebook.add(cluster_frame, text=f"Cluster {cluster_id}")
+            notebook.add(cluster_frame, text=f"Cluster {cluster_id}" if cluster_id != -1 else "List")
 
             canvas = tk.Canvas(cluster_frame)
             scrollbar = tk.Scrollbar(cluster_frame, orient="vertical", command=canvas.yview)
@@ -126,22 +120,17 @@ def setup_cluster_page(frame, selected_folder):
     algo_menu = ttk.Combobox(filter_frame, textvariable=algo_var, values=['KMeans', 'DBSCAN'], font=("Arial", 14))
     algo_menu.pack(side="left", padx=5)
 
-    param_label = tk.Label(filter_frame, text="Paramètres :", font=("Arial", 14))
+    param_label = tk.Label(filter_frame, text="Nombre de clusters :", font=("Arial", 14))
     param_label.pack(side="left", padx=5)
 
     param_entry = tk.Entry(filter_frame, font=("Arial", 14))
     param_entry.pack(side="left", padx=5)
 
-    reload_button = tk.Button(
-        filter_frame, text="Appliquer", font=("Arial", 14),
-        command=lambda: apply_clustering(
-            algo_var.get(), **eval(param_entry.get() or "{}")
-        )
-    )
+    reload_button = tk.Button(filter_frame, text="Appliquer", font=("Arial", 14),
+                               command=lambda: apply_clustering(
+                                   algo_var.get(), int(param_entry.get())
+                               ))
     reload_button.pack(side="left", padx=5)
 
     # Appliquer le clustering initialement
-    apply_clustering('KMeans', n_clusters=5)
-
-    # Connecter le bouton "Appliquer" à `apply_clustering`
-    
+    apply_clustering('KMeans', 5)
