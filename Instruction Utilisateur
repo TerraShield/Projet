@@ -4,4 +4,6 @@ Instructions d’utilisation Lancer l’application :
 -Choisir un onglet : -Liste : Visualisez toutes les images chargées, organisées par sous-dossier. 
 -Clustering : Sélectionnez un algorithme (KMeans ou DBSCAN). Indiquez le nombre de clusters (ex :5) Cliquez sur Appliquer pour afficher les regroupements. Vous pouvez télécharger le cluster obtenu 
 -Histogramme : Visualisez l’histogramme des couleurs pour chaque image Enregistrez si vous le souhaiter 
--Heatmap : Obtenez une vue heatmap basée sur les caractéristiques SIFT. Enregistrez si vous le souhaiter
+-Heatmap : Obtenez une vue heatmap basée sur les caractéristiques SIFT. Cliquer sur un point dans la matrice de similarité pour voir les 2 images associé. Enregistrez si vous le souhaiter.
+
+Dans liste ou cluster, lorsqu'on clique sur une image on peut la renommer ou l'enregistrer 
