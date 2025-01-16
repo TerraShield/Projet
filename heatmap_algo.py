@@ -5,7 +5,7 @@ except ImportError:
     raise ImportError("Le module 'skimage' n'est pas installé. Veuillez l'installer en utilisant 'pip install scikit-image'.")
 
 try:
-    import cv2  # OpenCV pour SIFT
+    import cv2  
 except ImportError:
     raise ImportError("Le module 'cv2' n'est pas installé. Veuillez l'installer en utilisant 'pip install opencv-python-headless'.")
 
@@ -18,12 +18,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans  # Pour le Bag of Words
+from sklearn.cluster import KMeans  
 import matplotlib.image as mpimg
 from sklearn.metrics.pairwise import cosine_similarity
 import os
 
-# 1. Chargement et prétraitement des images
+# Chargement et prétraitement des images
 def load_and_preprocess_images(image_paths, target_size=(64, 64)):
     images = []
     labels = []
@@ -38,7 +38,7 @@ def load_and_preprocess_images(image_paths, target_size=(64, 64)):
 
     return np.array(images), labels, image_paths
 
-# 2. Extraction des descripteurs SIFT
+# Extraction des descripteurs SIFT
 def extract_sift_features(images):
     sift = cv2.SIFT_create()  # Crée un détecteur SIFT
     all_keypoints = []
@@ -53,14 +53,14 @@ def extract_sift_features(images):
     
     return all_keypoints, all_descriptors
 
-# 3. Création du modèle Bag of Words (BoW)
+# Création du modèle Bag of Words (BoW)
 def create_bow(descriptors_list, n_words=50):
     all_descriptors = np.vstack(descriptors_list)  # Fusionner tous les descripteurs de toutes les images
     kmeans = KMeans(n_clusters=n_words, random_state=42)  # Utiliser KMeans pour créer les "mots visuels"
     kmeans.fit(all_descriptors)
     return kmeans
 
-# 4. Représenter chaque image par un histogramme de mots visuels
+# Représenter chaque image par un histogramme de mots visuels
 def get_bow_histograms(descriptors_list, bow_model):
     histograms = []
     for descriptors in descriptors_list:
@@ -71,7 +71,7 @@ def get_bow_histograms(descriptors_list, bow_model):
         histograms.append(histogram)
     return np.array(histograms)
 
-# 5. Clustering avec DBSCAN sur les histogrammes BoW
+# Clustering avec DBSCAN sur les histogrammes BoW
 def dbscan_clustering(histograms_scaled, eps=0.3, min_samples=2):
     similarity_matrix = cosine_similarity(histograms_scaled)  # Calculer la matrice de similarité
     distance_matrix = 1 - similarity_matrix  # Convertir la matrice de similarité en une matrice de distance
@@ -79,7 +79,7 @@ def dbscan_clustering(histograms_scaled, eps=0.3, min_samples=2):
     dbscan = DBSCAN(eps=eps, min_samples=min_samples, metric='precomputed')  # Appliquer DBSCAN en utilisant la matrice de distance
     clusters = dbscan.fit_predict(distance_matrix)
     
-    # Reassign cluster -1 (noise points) to the nearest cluster
+    # Réassigner le cluster -1 au cluster le plus proche
     if -1 in clusters:
         valid_clusters = clusters != -1
         if np.any(valid_clusters):
@@ -90,11 +90,11 @@ def dbscan_clustering(histograms_scaled, eps=0.3, min_samples=2):
     
     return clusters
 
-# 6. Visualisation des résultats
+# Visualisation des résultats
 def visualize_results(histograms_pca, clusters, image_paths, original_index):
     fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
-    # a) Scatter plot du clustering
+    # Scatter plot du clustering
     unique_clusters = set(clusters)
     colors = plt.cm.get_cmap('viridis', len(unique_clusters))
     for cluster in unique_clusters:
@@ -109,7 +109,7 @@ def visualize_results(histograms_pca, clusters, image_paths, original_index):
     axes[0].legend()
     fig.colorbar(plt.cm.ScalarMappable(cmap='viridis'), ax=axes[0]).set_label("Cluster")
 
-    # b) Matrice de similarité entre les histogrammes BoW
+    # Matrice de similarité entre les histogrammes BoW
     similarity_matrix = cosine_similarity(histograms_pca)
     im = axes[1].imshow(similarity_matrix, cmap='plasma', aspect='auto')
     axes[1].set_title("Matrice de similarité")
@@ -117,6 +117,9 @@ def visualize_results(histograms_pca, clusters, image_paths, original_index):
     axes[1].set_ylabel("Index des lettrines")
     fig.colorbar(im, ax=axes[1]).set_label("Similarité")
 
+    # Permet de montrer les images pointé par le clique de la souris sur les graphes
+    # Sur le graphe PCA, montre l'image qui est relié au point le plus proche de la souris lors du clique
+    # Sur la matrice, montre quelles images sont comparées entre elles
     def on_click(event):
         if event.inaxes == axes[0]:  # Vérifie si le clic est dans l'axe du graphique PCA
             x_click, y_click = event.xdata, event.ydata
@@ -145,6 +148,9 @@ def visualize_results(histograms_pca, clusters, image_paths, original_index):
 
     fig.canvas.mpl_connect('button_press_event', on_click)
 
+    # Sur la matrice de similarité, permet de montrer le taux de différence
+    # 1 | jaune = image identique
+    # Plus les deux images comparés sont différentes, plus la couleur tirera sur le violet, et plus le chiffre sera bas
     cursor = mplcursors.cursor(im, hover=True)
     @cursor.connect("add")
     def on_add(sel):
@@ -152,6 +158,7 @@ def visualize_results(histograms_pca, clusters, image_paths, original_index):
         sel.annotation.set_text(f"Similarité: {similarity_matrix[i, j]:.2f}")
         sel.annotation.set_backgroundcolor('white')
 
+    # Permet de gérer le zoom sur les graphes
     def zoom(event):
         ax = event.inaxes
         if ax is None:
