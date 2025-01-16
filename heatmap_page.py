@@ -9,7 +9,12 @@ from sklearn.decomposition import PCA
 from heatmap_algo import load_and_preprocess_images, extract_sift_features, create_bow, get_bow_histograms, dbscan_clustering, visualize_results
 
 def setup_heatmap_page(frame, selected_folder):
-    """Configure une page pour afficher les images et leurs heatmaps."""
+    """Configure une page pour afficher les images et leurs heatmaps.
+
+    Args:
+        frame (_type_): _description_
+        selected_folder (_type_): _description_
+    """
     if not os.path.exists(selected_folder):
         tk.Label(frame, text=f"Le dossier '{selected_folder}' est introuvable.", font=("Arial", 16), fg="red").pack(pady=20)
         return

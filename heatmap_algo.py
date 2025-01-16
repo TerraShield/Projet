@@ -23,8 +23,19 @@ import matplotlib.image as mpimg
 from sklearn.metrics.pairwise import cosine_similarity
 import os
 
-# Chargement et prétraitement des images
 def load_and_preprocess_images(image_paths, target_size=(64, 64)):
+    """ Chargement et prétraitement des images
+
+    Args:
+        image_paths (list): Liste de chemins d'accès aux images
+        target_size (tuple, optional): Taille cible pour redimensionner les images (width, height). Defaults to (64, 64).
+
+    Returns:
+        tuple: (np.array(images), labels, image_paths)
+            np.array(images) : Un tableau contenant les images prétraitées
+            labels : Une liste de nom de fichiers des images
+            image_paths : La liste originale des chemins d'accès
+    """
     images = []
     labels = []
     for path in image_paths:
@@ -38,8 +49,17 @@ def load_and_preprocess_images(image_paths, target_size=(64, 64)):
 
     return np.array(images), labels, image_paths
 
-# Extraction des descripteurs SIFT
 def extract_sift_features(images):
+    """Extraction des descripteurs SIFT
+
+    Args:
+        images (np.array): Tableau contenant les images prétraitées
+
+    Returns:
+        tuple: (all_keypoints, all_descriptors)
+            all_keypoints : Une liste de keypoints détectés pour chaque image
+            all_descriptors : Une liste de descripteurs SIFT pour chaque image
+    """
     sift = cv2.SIFT_create()  # Crée un détecteur SIFT
     all_keypoints = []
     all_descriptors = []
