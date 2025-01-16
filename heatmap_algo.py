@@ -22,6 +22,7 @@ from sklearn.cluster import KMeans
 import matplotlib.image as mpimg
 from sklearn.metrics.pairwise import cosine_similarity
 import os
+from sklearn.decomposition import PCA
 
 def load_and_preprocess_images(image_paths, target_size=(64, 64)):
     """ Chargement et prétraitement des images
@@ -200,3 +201,33 @@ def visualize_results(histograms_pca, clusters, image_paths, original_index):
     fig.canvas.mpl_connect('scroll_event', zoom)
     plt.tight_layout()
     plt.show()
+
+def show_heatmap(image_path, images_by_folder):
+    images, _, image_paths = load_and_preprocess_images([img for imgs in images_by_folder.values() for img in imgs])
+
+    # Extraire les descripteurs SIFT
+    keypoints_list, descriptors_list = extract_sift_features(images)
+
+    # Créer le modèle Bag of Words
+    n_words = min(50, len(descriptors_list))
+    bow_model = create_bow(descriptors_list, n_words=n_words)
+
+    # Calcul des histogrammes BoW pour chaque image
+    histograms = get_bow_histograms(descriptors_list, bow_model)
+
+    # Normalisation des histogrammes
+    scaler = StandardScaler()
+    histograms_scaled = scaler.fit_transform(histograms)
+
+    # Réduire la dimensionnalité pour la visualisation
+    pca = PCA(n_components=2)
+    histograms_pca = pca.fit_transform(histograms_scaled)
+
+    # Clustering avec DBSCAN sur les histogrammes BoW
+    clusters = dbscan_clustering(histograms_scaled)
+
+    # Trouver l'indice de l'image originale
+    original_index = image_paths.index(image_path)
+
+    # Visualisation des résultats
+    visualize_results(histograms_pca, clusters, image_paths, original_index)

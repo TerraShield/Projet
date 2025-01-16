@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import os
 from PIL import Image, ImageTk
-import matplotlib.pyplot as plt
+from histogramme_algo import show_histogram
 
 def setup_histogram_page(frame, selected_folder):
     """Configure un onglet pour afficher les histogrammes des images."""
@@ -19,17 +19,6 @@ def setup_histogram_page(frame, selected_folder):
     if not any(images_by_folder.values()):
         tk.Label(frame, text="Aucune image disponible dans le dossier sélectionné.", font=("Arial", 16), fg="red").pack(pady=20)
         return
-
-    def show_histogram(image_path):
-        image = Image.open(image_path).convert("RGB")
-        plt.figure(figsize=(8, 6))
-        plt.title(f"Histogramme de l'image : {os.path.basename(image_path)}")
-        plt.xlabel("Valeur des pixels")
-        plt.ylabel("Nombre de pixels")
-        for i, color in enumerate(["red", "green", "blue"]):
-            histogram = image.histogram()[i*256:(i+1)*256]
-            plt.bar(range(256), histogram, color=color, alpha=0.6)
-        plt.show()
 
     # Ajouter une barre de recherche
     search_frame = tk.Frame(frame)
