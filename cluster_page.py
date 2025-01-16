@@ -1,16 +1,21 @@
 import os
 import numpy as np
 from PIL import Image, ImageTk
+from sklearn.cluster import KMeans, DBSCAN
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 import tkinter as tk
 from tkinter import ttk
 from detail_image import show_image_detail
-from cluster_algo import load_and_preprocess_images, apply_clustering
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-
+from sklearn.metrics.pairwise import cosine_similarity
 
 def setup_cluster_page(frame, selected_folder):
-    """Configure une page de clustering avec des options de filtre et de paramètres."""
+    """Configure une page de clustering avec des options de filtre et de paramètres.
+
+    Args:
+        frame (tk.Frame): Le cadre principal où les clusters seront affichés.
+        selected_folder (str): Le dossier contenant les images à afficher.
+    """
     image_folder = selected_folder
 
     # Récupérer les images par sous-dossier
@@ -22,6 +27,26 @@ def setup_cluster_page(frame, selected_folder):
         error_label = tk.Label(frame, text="Aucune image trouvée dans le dossier sélectionné.", font=("Arial", 16), fg="red")
         error_label.pack(pady=20)
         return
+
+    # Charger et prétraiter les images
+    def load_and_preprocess_images(image_paths, target_size=(64, 64)):
+        """Charge et prétraite les images.
+
+        Args:
+            image_paths (list): Liste des chemins d'accès aux images.
+            target_size (tuple, optional): Taille cible pour redimensionner les images. Defaults to (64, 64).
+
+        Returns:
+            np.array: Tableau contenant les images prétraitées.
+        """
+        images = []
+        for path in image_paths:
+            try:
+                img = Image.open(path).convert("RGB").resize(target_size, Image.Resampling.LANCZOS)
+                images.append(np.array(img).flatten())
+            except Exception as e:
+                print(f"Erreur lors du chargement de {path}: {e}")
+        return np.array(images)
 
     images = load_and_preprocess_images(image_paths)
 
@@ -42,7 +67,74 @@ def setup_cluster_page(frame, selected_folder):
     last_p = tk.StringVar(value="None")
     last_n_jobs = tk.StringVar(value="None")
 
-    def display_clusters(all_clusters):
+    # Fonction pour appliquer le clustering et afficher les résultats
+    def apply_clustering(algorithm, clusters_count, eps=0.5, min_samples=5, metric='euclidean', algorithm_dbscan='auto', leaf_size=30, p=None, n_jobs=None):
+        """Applique le clustering et affiche les résultats.
+
+        Args:
+            algorithm (str): Algorithme de clustering à utiliser ('KMeans' ou 'DBSCAN').
+            clusters_count (int): Nombre de clusters (pour KMeans).
+            eps (float, optional): Distance maximale entre deux échantillons pour qu'ils soient considérés comme voisins (pour DBSCAN). Defaults to 0.5.
+            min_samples (int, optional): Nombre minimum d'échantillons dans un voisinage pour qu'un point soit considéré comme un noyau (pour DBSCAN). Defaults to 5.
+            metric (str, optional): La métrique utilisée pour calculer la distance entre les points (pour DBSCAN). Defaults to 'euclidean'.
+            algorithm_dbscan (str, optional): L'algorithme utilisé pour calculer les plus proches voisins (pour DBSCAN). Defaults to 'auto'.
+            leaf_size (int, optional): Taille des feuilles passées à BallTree ou KDTree (pour DBSCAN). Defaults to 30.
+            p (float, optional): Le paramètre de puissance pour la métrique Minkowski (pour DBSCAN). Defaults to None.
+            n_jobs (int, optional): Le nombre de tâches à utiliser pour le calcul (pour DBSCAN). Defaults to None.
+        """
+        for widget in frame.winfo_children():
+            if widget not in [filter_frame, reload_button, eps_label, eps_entry, min_samples_label, min_samples_entry, metric_label, metric_entry, algorithm_label, algorithm_entry, leaf_size_label, leaf_size_entry, p_label, p_entry, n_jobs_label, n_jobs_entry]:
+                widget.destroy()
+
+        # Appliquer le clustering avec l'algorithme choisi
+        if algorithm == 'KMeans':
+            clustering_model = KMeans(
+                n_clusters=clusters_count,  # Utilise le nombre de clusters fourni
+                random_state=42
+            )
+        elif algorithm == 'DBSCAN':
+            clustering_model = DBSCAN(
+                eps=eps,  # Utilise le paramètre eps fourni
+                min_samples=min_samples,  # Utilise le paramètre min_samples fourni
+                metric=metric,
+                algorithm=algorithm_dbscan,
+                leaf_size=leaf_size,
+                p=p,
+                n_jobs=n_jobs
+            )
+        else:
+            tk.Label(frame, text="Algorithme non supporté.", font=("Arial", 16), fg="red").pack(pady=10)
+            return
+
+        # Diviser les images en morceaux gérables
+        chunk_size = 1000
+        num_chunks = (len(images_pca) + chunk_size - 1) // chunk_size
+        all_clusters = np.zeros(len(images_pca), dtype=int)
+
+        try:
+            for chunk_idx in range(num_chunks):
+                start_idx = chunk_idx * chunk_size
+                end_idx = min((chunk_idx + 1) * chunk_size, len(images_pca))
+                chunk_data = images_pca[start_idx:end_idx]
+
+                chunk_clusters = clustering_model.fit_predict(chunk_data)
+                all_clusters[start_idx:end_idx] = chunk_clusters
+
+                if algorithm == 'DBSCAN' and -1 in chunk_clusters:
+                    valid_clusters = chunk_clusters != -1
+                    if np.any(valid_clusters):
+                        distance_matrix = 1 - cosine_similarity(chunk_data)
+                        for i, cluster in enumerate(chunk_clusters):
+                            if cluster == -1:
+                                nearest_cluster = np.argmin(distance_matrix[i][valid_clusters])
+                                chunk_clusters[i] = chunk_clusters[valid_clusters][nearest_cluster]
+
+                all_clusters[start_idx:end_idx] = chunk_clusters
+
+        except Exception as e:
+            tk.Label(frame, text=f"Erreur lors du clustering : {e}", font=("Arial", 16), fg="red").pack(pady=10)
+            return
+
         # Afficher les clusters
         notebook = ttk.Notebook(frame)
         notebook.pack(fill="both", expand=True)
@@ -81,17 +173,6 @@ def setup_cluster_page(frame, selected_folder):
                 except Exception as e:
                     print(f"Erreur lors du chargement de l'image {image_path}: {e}")
 
-    def apply_clustering_wrapper(algorithm, clusters_count, eps=0.5, min_samples=5, metric='euclidean', algorithm_dbscan='auto', leaf_size=30, p=None, n_jobs=None):
-        for widget in frame.winfo_children():
-            if widget not in [filter_frame, reload_button, eps_label, eps_entry, min_samples_label, min_samples_entry, metric_label, metric_entry, algorithm_label, algorithm_entry, leaf_size_label, leaf_size_entry, p_label, p_entry, n_jobs_label, n_jobs_entry]:
-                widget.destroy()
-
-        try:
-            all_clusters = apply_clustering(images_pca, image_paths, algorithm, clusters_count, eps, min_samples, metric, algorithm_dbscan, leaf_size, p, n_jobs)
-            display_clusters(all_clusters)
-        except RuntimeError as e:
-            tk.Label(frame, text=str(e), font=("Arial", 16), fg="red").pack(pady=10)
-
     # Ajouter des options de paramétrage
     filter_frame = tk.Frame(frame)
     filter_frame.pack(pady=10, fill="x")
@@ -127,27 +208,6 @@ def setup_cluster_page(frame, selected_folder):
     n_jobs_label = tk.Label(filter_frame, text="N Jobs (DBSCAN) :", font=("Arial", 14))
     n_jobs_entry = tk.Entry(filter_frame, font=("Arial", 14))
 
-    def create_tooltip(widget, text):
-        tooltip = tk.Toplevel(widget)
-        tooltip.wm_overrideredirect(True)
-        tooltip.wm_geometry("+0+0")
-        label = tk.Label(tooltip, text=text, background="yellow", relief="solid", borderwidth=1, font=("Arial", 10))
-        label.pack()
-        tooltip.withdraw()
-
-        def enter(event):
-            x, y, _, _ = widget.bbox("insert")
-            x += widget.winfo_rootx() + 25
-            y += widget.winfo_rooty() + 25
-            tooltip.wm_geometry(f"+{x}+{y}")
-            tooltip.deiconify()
-
-        def leave(event):
-            tooltip.withdraw()
-
-        widget.bind("<Enter>", enter)
-        widget.bind("<Leave>", leave)
-
     def open_dbscan_config():
         """Ouvre une fenêtre pour configurer les paramètres de DBSCAN."""
         config_window = tk.Toplevel(frame)
@@ -157,39 +217,33 @@ def setup_cluster_page(frame, selected_folder):
         tk.Label(config_window, text="Eps :", font=("Arial", 14)).pack(pady=5)
         eps_entry = tk.Entry(config_window, font=("Arial", 14), textvariable=last_eps)
         eps_entry.pack(pady=5)
-        create_tooltip(eps_entry, "Distance maximale entre deux échantillons pour qu'ils soient considérés comme voisins.")
 
         tk.Label(config_window, text="Min Samples :", font=("Arial", 14)).pack(pady=5)
         min_samples_entry = tk.Entry(config_window, font=("Arial", 14), textvariable=last_min_samples)
         min_samples_entry.pack(pady=5)
-        create_tooltip(min_samples_entry, "Nombre minimum d'échantillons dans un voisinage pour qu'un point soit considéré comme un noyau.")
 
         tk.Label(config_window, text="Metric :", font=("Arial", 14)).pack(pady=5)
         metric_menu = ttk.Combobox(config_window, textvariable=last_metric, values=['euclidean', 'manhattan', 'chebyshev', 'minkowski', 'precomputed'], font=("Arial", 14))
         metric_menu.pack(pady=5)
-        create_tooltip(metric_menu, "La métrique utilisée pour calculer la distance entre les points.")
 
         tk.Label(config_window, text="Algorithm :", font=("Arial", 14)).pack(pady=5)
         algorithm_menu = ttk.Combobox(config_window, textvariable=last_algorithm, values=['auto', 'ball_tree', 'kd_tree', 'brute'], font=("Arial", 14))
         algorithm_menu.pack(pady=5)
-        create_tooltip(algorithm_menu, "L'algorithme utilisé pour calculer les plus proches voisins.")
 
         tk.Label(config_window, text="Leaf Size :", font=("Arial", 14)).pack(pady=5)
         leaf_size_entry = tk.Entry(config_window, font=("Arial", 14), textvariable=last_leaf_size)
         leaf_size_entry.pack(pady=5)
-        create_tooltip(leaf_size_entry, "Taille des feuilles passées à BallTree ou KDTree.")
 
         tk.Label(config_window, text="P :", font=("Arial", 14)).pack(pady=5)
         p_entry = tk.Entry(config_window, font=("Arial", 14), textvariable=last_p)
         p_entry.pack(pady=5)
-        create_tooltip(p_entry, "Le paramètre de puissance pour la métrique Minkowski.")
 
         tk.Label(config_window, text="N Jobs :", font=("Arial", 14)).pack(pady=5)
         n_jobs_entry = tk.Entry(config_window, font=("Arial", 14), textvariable=last_n_jobs)
         n_jobs_entry.pack(pady=5)
-        create_tooltip(n_jobs_entry, "Le nombre de tâches à utiliser pour le calcul.")
 
         def apply_dbscan_config():
+            """Applique les paramètres de DBSCAN et lance le clustering."""
             last_eps.set(eps_entry.get() or "0.5")
             last_min_samples.set(min_samples_entry.get() or "5")
             last_metric.set(metric_menu.get() or "euclidean")
@@ -206,12 +260,13 @@ def setup_cluster_page(frame, selected_folder):
             p = float(last_p.get()) if last_p.get().lower() != 'none' and last_p.get() else None
             n_jobs = int(last_n_jobs.get()) if last_n_jobs.get().lower() != 'none' and last_n_jobs.get() else None
 
-            apply_clustering_wrapper('DBSCAN', 0, eps, min_samples, metric, algorithm, leaf_size, p, n_jobs)
+            apply_clustering('DBSCAN', 0, eps, min_samples, metric, algorithm, leaf_size, p, n_jobs)
             config_window.destroy()
 
         tk.Button(config_window, text="Appliquer", font=("Arial", 14), command=apply_dbscan_config).pack(pady=20)
 
     def update_dbscan_params(*args):
+        """Met à jour les paramètres de DBSCAN en fonction de la sélection de l'algorithme."""
         if algo_var.get() == 'DBSCAN':
             param_label.pack_forget()
             param_entry.pack_forget()
@@ -229,7 +284,7 @@ def setup_cluster_page(frame, selected_folder):
     param_entry.pack(side="left", padx=5, pady=2)
 
     reload_button = tk.Button(filter_frame, text="Appliquer", font=("Arial", 14),
-                               command=lambda: apply_clustering_wrapper(
+                               command=lambda: apply_clustering(
                                    algo_var.get(), int(param_entry.get() or 5), float(eps_entry.get() or 0.5), int(min_samples_entry.get() or 5),
                                    metric_entry.get() or 'euclidean', algorithm_entry.get() or 'auto', int(leaf_size_entry.get() or 30),
                                    float(p_entry.get()) if p_entry.get().lower() != 'none' and p_entry.get() else None, 

@@ -7,6 +7,15 @@ from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import cosine_similarity
 
 def load_and_preprocess_images(image_paths, target_size=(64, 64)):
+    """Chargement et prétraitement des images.
+
+    Args:
+        image_paths (list): Liste de chemins d'accès aux images.
+        target_size (tuple, optional): Taille cible pour redimensionner les images (width, height). Defaults to (64, 64).
+
+    Returns:
+        np.array: Tableau contenant les images prétraitées.
+    """
     images = []
     for path in image_paths:
         try:
@@ -17,6 +26,24 @@ def load_and_preprocess_images(image_paths, target_size=(64, 64)):
     return np.array(images)
 
 def apply_clustering(images_pca, image_paths, algorithm, clusters_count, eps=0.5, min_samples=5, metric='euclidean', algorithm_dbscan='auto', leaf_size=30, p=None, n_jobs=None):
+    """Applique le clustering sur les images.
+
+    Args:
+        images_pca (np.array): Tableau contenant les images après réduction de dimensionnalité.
+        image_paths (list): Liste des chemins d'accès aux images.
+        algorithm (str): Algorithme de clustering à utiliser ('KMeans' ou 'DBSCAN').
+        clusters_count (int): Nombre de clusters (pour KMeans).
+        eps (float, optional): Distance maximale entre deux échantillons pour qu'ils soient considérés comme voisins (pour DBSCAN). Defaults to 0.5.
+        min_samples (int, optional): Nombre minimum d'échantillons dans un voisinage pour qu'un point soit considéré comme un noyau (pour DBSCAN). Defaults to 5.
+        metric (str, optional): La métrique utilisée pour calculer la distance entre les points (pour DBSCAN). Defaults to 'euclidean'.
+        algorithm_dbscan (str, optional): L'algorithme utilisé pour calculer les plus proches voisins (pour DBSCAN). Defaults to 'auto'.
+        leaf_size (int, optional): Taille des feuilles passées à BallTree ou KDTree (pour DBSCAN). Defaults to 30.
+        p (float, optional): Le paramètre de puissance pour la métrique Minkowski (pour DBSCAN). Defaults to None.
+        n_jobs (int, optional): Le nombre de tâches à utiliser pour le calcul (pour DBSCAN). Defaults to None.
+
+    Returns:
+        np.array: Tableau contenant les labels de clusters pour chaque image.
+    """
     # Appliquer le clustering avec l'algorithme choisi
     if algorithm == 'KMeans':
         clustering_model = KMeans(

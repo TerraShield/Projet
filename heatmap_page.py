@@ -12,8 +12,8 @@ def setup_heatmap_page(frame, selected_folder):
     """Configure une page pour afficher les images et leurs heatmaps.
 
     Args:
-        frame (_type_): _description_
-        selected_folder (_type_): _description_
+        frame (tk.Frame): Le cadre principal où les heatmaps seront affichées.
+        selected_folder (str): Le dossier contenant les images à afficher.
     """
     if not os.path.exists(selected_folder):
         tk.Label(frame, text=f"Le dossier '{selected_folder}' est introuvable.", font=("Arial", 16), fg="red").pack(pady=20)
@@ -30,6 +30,11 @@ def setup_heatmap_page(frame, selected_folder):
         return
 
     def show_heatmap_wrapper(image_path):
+        """Wrapper pour afficher la heatmap d'une image.
+
+        Args:
+            image_path (str): Chemin d'accès de l'image.
+        """
         show_heatmap(image_path, images_by_folder)
 
     # Ajouter une barre de recherche
@@ -43,6 +48,7 @@ def setup_heatmap_page(frame, selected_folder):
     search_entry.pack(side="left", padx=5, fill="x", expand=True)
 
     def filter_images():
+        """Filtre les images en fonction de la requête de recherche."""
         query = search_entry.get().lower()
         filtered = {folder: [img for img in images if query in os.path.basename(img).lower()]
                     for folder, images in images_by_folder.items()}
@@ -56,12 +62,22 @@ def setup_heatmap_page(frame, selected_folder):
     notebook.pack(fill="both", expand=True)
 
     def animate_click(label):
-        """Créer une animation lors du clic sur une image."""
+        """Créer une animation lors du clic sur une image.
+
+        Args:
+            label (tk.Label): Le label de l'image cliquée.
+        """
         original_color = label.cget("bg")
         label.config(bg="yellow")
         label.after(200, lambda: label.config(bg=original_color))
 
     def display_images_for_folder(folder_name, images):
+        """Affiche les images pour un dossier spécifique.
+
+        Args:
+            folder_name (str): Le nom du dossier.
+            images (list): Liste des chemins d'accès aux images.
+        """
         folder_frame = tk.Frame(notebook)
         notebook.add(folder_frame, text=folder_name)
 
@@ -132,6 +148,11 @@ def setup_heatmap_page(frame, selected_folder):
         canvas.bind_all("<MouseWheel>", on_mouse_wheel)
 
     def display_images(images_by_folder):
+        """Affiche les images organisées par sous-dossier.
+
+        Args:
+            images_by_folder (dict): Dictionnaire contenant les chemins d'accès des images par dossier.
+        """
         for folder_name, images in images_by_folder.items():
             if images:  # Ajouter un onglet uniquement si le dossier contient des images
                 display_images_for_folder(folder_name, images)

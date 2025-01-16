@@ -6,7 +6,11 @@ from histogramme import setup_histogram_page  # Fonction pour gérer la page His
 from heatmap_page import setup_heatmap_page  # Fonction pour gérer la page Heatmap
 
 def create_app_window():
-    """Crée la fenêtre principale de l'application avec un Notebook."""
+    """Crée la fenêtre principale de l'application avec un Notebook.
+
+    Returns:
+        tk.Tk: La fenêtre principale de l'application.
+    """
     root = tk.Tk()
     root.title("Application d'Images")
     root.geometry("1280x720")  # Taille de la fenêtre principale
@@ -16,6 +20,7 @@ def create_app_window():
 
     # Fonction pour sélectionner un dossier
     def select_folder():
+        """Ouvre une boîte de dialogue pour sélectionner un dossier contenant des images."""
         folder = filedialog.askdirectory(title="Sélectionnez un dossier contenant des images")
         if folder:
             selected_folder.set(folder)
@@ -23,6 +28,7 @@ def create_app_window():
 
     # Fonction pour rafraîchir les onglets `Liste`, `Clustering`, `Histogramme` et `Heatmap`
     def refresh_tabs():
+        """Rafraîchit les onglets `Liste`, `Clustering`, `Histogramme` et `Heatmap` après la sélection d'un dossier."""
         for frame, setup_function in [(frame2, create_page2), (frame3, setup_cluster_page), (frame4, setup_histogram_page), (frame5, setup_heatmap_page)]:
             for widget in frame.winfo_children():
                 widget.destroy()

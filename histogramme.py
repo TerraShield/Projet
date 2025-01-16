@@ -5,7 +5,12 @@ from PIL import Image, ImageTk
 from histogramme_algo import show_histogram
 
 def setup_histogram_page(frame, selected_folder):
-    """Configure un onglet pour afficher les histogrammes des images."""
+    """Configure un onglet pour afficher les histogrammes des images.
+
+    Args:
+        frame (tk.Frame): Le cadre principal où les histogrammes seront affichés.
+        selected_folder (str): Le dossier contenant les images à afficher.
+    """
     if not os.path.exists(selected_folder):
         tk.Label(frame, text=f"Le dossier '{selected_folder}' est introuvable.", font=("Arial", 16), fg="red").pack(pady=20)
         return
@@ -31,6 +36,7 @@ def setup_histogram_page(frame, selected_folder):
     search_entry.pack(side="left", padx=5, fill="x", expand=True)
 
     def filter_images():
+        """Filtre les images en fonction de la requête de recherche."""
         query = search_entry.get().lower()
         filtered = {folder: [img for img in images if query in os.path.basename(img).lower()]
                     for folder, images in images_by_folder.items()}
@@ -44,6 +50,12 @@ def setup_histogram_page(frame, selected_folder):
     notebook.pack(fill="both", expand=True)
 
     def display_images_for_folder(folder_name, images):
+        """Affiche les images pour un dossier spécifique.
+
+        Args:
+            folder_name (str): Le nom du dossier.
+            images (list): Liste des chemins d'accès aux images.
+        """
         folder_frame = tk.Frame(notebook)
         notebook.add(folder_frame, text=folder_name)
 
@@ -114,6 +126,11 @@ def setup_histogram_page(frame, selected_folder):
         canvas.bind_all("<MouseWheel>", on_mouse_wheel)
 
     def display_images(images_by_folder):
+        """Affiche les images organisées par sous-dossier.
+
+        Args:
+            images_by_folder (dict): Dictionnaire contenant les chemins d'accès des images par dossier.
+        """
         for folder_name, images in images_by_folder.items():
             if images:  # Ajouter un onglet uniquement si le dossier contient des images
                 display_images_for_folder(folder_name, images)

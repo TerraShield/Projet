@@ -5,7 +5,13 @@ import os
 from detail_image import show_image_detail
 
 def create_page2(frame, root, selected_folder):
-    """Crée une galerie d'images, organisée par sous-dossiers avec des mini-onglets et un défilement."""
+    """Crée une galerie d'images, organisée par sous-dossiers avec des mini-onglets et un défilement.
+
+    Args:
+        frame (tk.Frame): Le cadre principal où la galerie sera affichée.
+        root (tk.Tk): La fenêtre principale de l'application.
+        selected_folder (str): Le dossier contenant les images à afficher.
+    """
     image_folder = selected_folder
 
     if not os.path.exists(image_folder):
@@ -35,6 +41,7 @@ def create_page2(frame, root, selected_folder):
     search_entry.pack(side="left", padx=5, fill="x", expand=True)
 
     def filter_images():
+        """Filtre les images en fonction de la requête de recherche."""
         query = search_entry.get().lower()
         filtered = {folder: [img for img in images if query in os.path.basename(img).lower()]
                     for folder, images in images_by_folder.items()}
@@ -48,6 +55,12 @@ def create_page2(frame, root, selected_folder):
     notebook.pack(fill="both", expand=True)
 
     def display_images_for_folder(folder_name, images):
+        """Affiche les images pour un dossier spécifique.
+
+        Args:
+            folder_name (str): Le nom du dossier.
+            images (list): Liste des chemins d'accès aux images.
+        """
         folder_frame = tk.Frame(notebook)
         notebook.add(folder_frame, text=folder_name)
 
@@ -118,6 +131,11 @@ def create_page2(frame, root, selected_folder):
         canvas.bind_all("<MouseWheel>", on_mouse_wheel)
 
     def display_images(images_by_folder):
+        """Affiche les images organisées par sous-dossier.
+
+        Args:
+            images_by_folder (dict): Dictionnaire contenant les chemins d'accès des images par dossier.
+        """
         for folder_name, images in images_by_folder.items():
             if images:  # Ajouter un onglet uniquement si le dossier contient des images
                 display_images_for_folder(folder_name, images)

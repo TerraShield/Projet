@@ -4,7 +4,11 @@ from PIL import Image, ImageTk
 import os
 
 def show_image_detail(image_path):
-    """Affiche une fenêtre avec l'image sélectionnée, son nom en titre, et permet d'ajouter l'image à un dossier."""
+    """Affiche une fenêtre avec l'image sélectionnée, son nom en titre, et permet d'ajouter l'image à un dossier.
+
+    Args:
+        image_path (str): Chemin d'accès de l'image à afficher.
+    """
     if not os.path.exists(image_path):
         print(f"L'image {image_path} est introuvable.")
         return
@@ -31,6 +35,7 @@ def show_image_detail(image_path):
         image_label.pack(expand=True)
 
         def add_to_folder():
+            """Ajoute l'image sélectionnée à un dossier choisi par l'utilisateur."""
             folder_selected = filedialog.askdirectory(title="Sélectionnez un dossier")
             if folder_selected:
                 try:
@@ -42,6 +47,7 @@ def show_image_detail(image_path):
                     tk.Label(detail_window, text=f"Erreur : {e}", font=("Arial", 12), fg="red").pack(pady=10)
 
         def rename_image():
+            """Ouvre une fenêtre pour renommer l'image sélectionnée."""
             rename_window = tk.Toplevel(detail_window)
             rename_window.title("Renommer l'image")
             rename_window.geometry("300x150")
@@ -55,6 +61,7 @@ def show_image_detail(image_path):
             tk.Label(frame, text=".jpg", font=("Arial", 12)).pack(side="left")
 
             def apply_rename():
+                """Applique le nouveau nom à l'image."""
                 new_name = new_name_var.get()
                 if new_name:
                     new_path = os.path.join(os.path.dirname(image_path), new_name + ".jpg")

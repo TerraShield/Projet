@@ -74,15 +74,31 @@ def extract_sift_features(images):
     
     return all_keypoints, all_descriptors
 
-# Création du modèle Bag of Words (BoW)
 def create_bow(descriptors_list, n_words=50):
+    """Création du modèle Bag of Words (BoW)
+
+    Args:
+        descriptors_list (list): Liste de descripteurs SIFT pour chaque image
+        n_words (int, optional): Nombre de clusters (mots visuels) à créer. Defaults to 50.
+
+    Returns:
+        KMeans: Modèle KMeans entraîné sur les descripteurs
+    """
     all_descriptors = np.vstack(descriptors_list)  # Fusionner tous les descripteurs de toutes les images
     kmeans = KMeans(n_clusters=n_words, random_state=42)  # Utiliser KMeans pour créer les "mots visuels"
     kmeans.fit(all_descriptors)
     return kmeans
 
-# Représenter chaque image par un histogramme de mots visuels
 def get_bow_histograms(descriptors_list, bow_model):
+    """Représenter chaque image par un histogramme de mots visuels
+
+    Args:
+        descriptors_list (list): Liste de descripteurs SIFT pour chaque image
+        bow_model (KMeans): Modèle KMeans entraîné sur les descripteurs
+
+    Returns:
+        np.array: Tableau contenant les histogrammes de mots visuels pour chaque image
+    """
     histograms = []
     for descriptors in descriptors_list:
         words = bow_model.predict(descriptors)  # Attribuer chaque descripteur à un mot visuel
@@ -92,8 +108,17 @@ def get_bow_histograms(descriptors_list, bow_model):
         histograms.append(histogram)
     return np.array(histograms)
 
-# Clustering avec DBSCAN sur les histogrammes BoW
 def dbscan_clustering(histograms_scaled, eps=0.3, min_samples=2):
+    """Clustering avec DBSCAN sur les histogrammes BoW
+
+    Args:
+        histograms_scaled (np.array): Tableau contenant les histogrammes de mots visuels normalisés
+        eps (float, optional): Distance maximale entre deux échantillons pour qu'ils soient considérés comme voisins. Defaults to 0.3.
+        min_samples (int, optional): Nombre minimum d'échantillons dans un voisinage pour qu'un point soit considéré comme un noyau. Defaults to 2.
+
+    Returns:
+        np.array: Tableau contenant les labels de clusters pour chaque image
+    """
     similarity_matrix = cosine_similarity(histograms_scaled)  # Calculer la matrice de similarité
     distance_matrix = 1 - similarity_matrix  # Convertir la matrice de similarité en une matrice de distance
     distance_matrix[distance_matrix < 0] = 0  # S'assurer qu'il n'y a pas de valeurs négatives dans la matrice de distance
@@ -111,8 +136,15 @@ def dbscan_clustering(histograms_scaled, eps=0.3, min_samples=2):
     
     return clusters
 
-# Visualisation des résultats
 def visualize_results(histograms_pca, clusters, image_paths, original_index):
+    """Visualisation des résultats
+
+    Args:
+        histograms_pca (np.array): Tableau contenant les histogrammes de mots visuels réduits en 2D
+        clusters (np.array): Tableau contenant les labels de clusters pour chaque image
+        image_paths (list): Liste de chemins d'accès aux images
+        original_index (int): Indice de l'image originale dans la liste des chemins d'accès
+    """
     fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
     # Scatter plot du clustering
@@ -203,6 +235,12 @@ def visualize_results(histograms_pca, clusters, image_paths, original_index):
     plt.show()
 
 def show_heatmap(image_path, images_by_folder):
+    """Afficher une heatmap des images similaires
+
+    Args:
+        image_path (str): Chemin d'accès de l'image originale
+        images_by_folder (dict): Dictionnaire contenant les chemins d'accès des images par dossier
+    """
     images, _, image_paths = load_and_preprocess_images([img for imgs in images_by_folder.values() for img in imgs])
 
     # Extraire les descripteurs SIFT
