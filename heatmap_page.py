@@ -6,7 +6,7 @@ from tkinter import ttk
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from heatmap_algo import load_and_preprocess_images, extract_sift_features, create_bow, get_bow_histograms, dbscan_clustering, visualize_results
+from heatmap_algo import load_and_preprocess_images, extract_sift_features, create_bow, get_bow_histograms, dbscan_clustering, visualize_results, show_heatmap
 
 def setup_heatmap_page(frame, selected_folder):
     """Configure une page pour afficher les images et leurs heatmaps."""
@@ -24,35 +24,8 @@ def setup_heatmap_page(frame, selected_folder):
         tk.Label(frame, text="Aucune image disponible dans le dossier sélectionné.", font=("Arial", 16), fg="red").pack(pady=20)
         return
 
-    def show_heatmap(image_path):
-        images, _, image_paths = load_and_preprocess_images([img for imgs in images_by_folder.values() for img in imgs])
-
-        # Extraire les descripteurs SIFT
-        keypoints_list, descriptors_list = extract_sift_features(images)
-
-        # Créer le modèle Bag of Words
-        n_words = min(50, len(descriptors_list))
-        bow_model = create_bow(descriptors_list, n_words=n_words)
-
-        # Calcul des histogrammes BoW pour chaque image
-        histograms = get_bow_histograms(descriptors_list, bow_model)
-
-        # Normalisation des histogrammes
-        scaler = StandardScaler()
-        histograms_scaled = scaler.fit_transform(histograms)
-
-        # Réduire la dimensionnalité pour la visualisation
-        pca = PCA(n_components=2)
-        histograms_pca = pca.fit_transform(histograms_scaled)
-
-        # Clustering avec DBSCAN sur les histogrammes BoW
-        clusters = dbscan_clustering(histograms_scaled)
-
-        # Trouver l'indice de l'image originale
-        original_index = image_paths.index(image_path)
-
-        # Visualisation des résultats
-        visualize_results(histograms_pca, clusters, image_paths, original_index)
+    def show_heatmap_wrapper(image_path):
+        show_heatmap(image_path, images_by_folder)
 
     # Ajouter une barre de recherche
     search_frame = tk.Frame(frame)
@@ -137,7 +110,7 @@ def setup_heatmap_page(frame, selected_folder):
                 label.grid(row=row, column=col, padx=10, pady=10)
 
                 # Associer un clic gauche pour afficher les détails de l'image
-                label.bind("<Button-1>", lambda e, path=image_file: [animate_click(label), show_heatmap(path)])
+                label.bind("<Button-1>", lambda e, path=image_file: [animate_click(label), show_heatmap_wrapper(path)])
 
                 col += 1
                 if col > 4:  # 5 images par ligne
