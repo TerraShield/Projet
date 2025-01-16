@@ -10,7 +10,12 @@ Fonctionnalités principales :
 
 Processus installation de l'environnement virtuel:
 
+--Manuel--
 Installer Miniconda (https://docs.anaconda.com/miniconda/install/)
+
+--Commande (windows)--
+curl https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe --output .\\Downloads\\Miniconda3-latest-Windows-x86_64.exe
+
 - Windows :
     - Lancez le .exe
     - Suivez les instructions 
@@ -20,6 +25,7 @@ Installer Miniconda (https://docs.anaconda.com/miniconda/install/)
         " bash Miniconda3-latest-Linux-x86_64.sh " / " bash Miniconda3-latest-MacOSX-arm64.sh "
     - Suivez les instructions
 
+Dans un terminal:
 Vous pouvez vérifier par la suite que conda est bien installé avec la commande suivante :
     " conda --version "
 
@@ -30,6 +36,8 @@ Pour se faire exécutez la commande suivante :
 Par la suite, avec un environnement déjà installé, ici "projet" issue du fichier environnement.yml, vous pouvez l'initialiser en exécutant ces deux commandes :
     " conda env create -f environnement.yml " 
     " conda activate projet "
+
+Dans votre IDE, sélectionner cet environnement nouvellement créé à partir du .yml comme interpreter
 
 Instructions d’utilisation
 Lancer l’application :
