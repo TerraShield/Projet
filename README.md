@@ -1,3 +1,5 @@
+
+
 Introduction
 Ce logiciel permet de regrouper et analyser les lettrines dans les anciens documents grâce à des algorithmes de clustering.
 
@@ -34,19 +36,22 @@ Lancer l’application :
 
 -Lancer le fichier main.py
 -Choisir un dossier d’images :
-Cliquez sur "Sélectionner un dossier" dans le menu principal.
-Naviguez jusqu’au dossier contenant les images des lettrines.
+	Cliquez sur "Sélectionner un dossier" dans le menu principal.
+	Naviguez jusqu’au dossier contenant les images des lettrines.
 -Choisir un onglet :
 	-Liste :
 		Visualisez toutes les images chargées, organisées par sous-dossier.
 	-Clustering :
 		Sélectionnez un algorithme (KMeans ou DBSCAN).
-Indiquez le nombre de clusters (ex :5)
+		Indiquez le nombre de clusters (ex :5)
 		Cliquez sur Appliquer pour afficher les regroupements.
+  		Vous pouvez télécharger le cluster obtenu
 	-Histogramme :
 		Visualisez l’histogramme des couleurs pour chaque image
+  		Enregistrez si vous le souhaiter
 	-Heatmap :
 		Obtenez une vue heatmap basée sur les caractéristiques SIFT.
+		Enregistrez si vous le souhaiter
 
 Structure des fichiers
 main.py : Point d’entrée pour exécuter l’application.
@@ -59,24 +64,24 @@ detail_image.py : Affichage détaillé d’une image sélectionnée.
 
 Algorithmes utilisés
 -Clustering (KMeans et DBSCAN) :
-KMeans regroupe les images en fonction de leur proximité dans un espace de caractéristiques.
-DBSCAN identifie les clusters denses et marque les anomalies. 
-ex: {"eps": 0.2, "min_samples": 3}
-eps : La distance maximale entre deux échantillons pour qu'ils soient considérés comme voisins.
-min_samples : Le nombre minimal de points dans un voisinage pour qu'un point soit considéré comme un noyau.
+	KMeans regroupe les images en fonction de leur proximité dans un espace de caractéristiques.
+	DBSCAN identifie les clusters denses et marque les anomalies. 
+	ex: {"eps": 0.2, "min_samples": 3}
+	eps : La distance maximale entre deux échantillons pour qu'ils soient considérés comme voisins.
+	min_samples : Le nombre minimal de points dans un voisinage pour qu'un point soit considéré comme un noyau.
 
 -Réduction de dimensionnalité (PCA) :
-Utilisée pour réduire les dimensions avant clustering.
+	Utilisée pour réduire les dimensions avant clustering.
 -SIFT et BoW :
-SIFT (Scale-Invariant Feature Transform) extrait des points clés des images.
-BoW (Bag of Words) regroupe ces descripteurs en mots visuels.
+	SIFT (Scale-Invariant Feature Transform) extrait des points clés des images.
+	BoW (Bag of Words) regroupe ces descripteurs en mots visuels.
 
 Fonctionnement de l'interface
 -Créée avec Tkinter.
 -Navigation :
-Les onglets permettent d’accéder aux différentes fonctionnalités.
+	Les onglets permettent d’accéder aux différentes fonctionnalités.
 -Paramètres :
-Menu déroulant et champs de saisie pour configurer les algorithmes.
+	Menu déroulant et champs de saisie pour configurer les algorithmes.
 
 Librairies utilisées :
 -numpy
