@@ -6,7 +6,7 @@ from detail_image import show_image_detail
 
 def create_page2(frame, root, selected_folder):
     """Crée une galerie d'images, organisée par sous-dossiers avec des mini-onglets et un défilement."""
-    image_folder = selected_folder if selected_folder else "images"
+    image_folder = selected_folder
 
     if not os.path.exists(image_folder):
         error_label = tk.Label(frame, text=f"Le dossier '{image_folder}' est introuvable.", font=("Arial", 16), fg="red")
@@ -68,7 +68,30 @@ def create_page2(frame, root, selected_folder):
         scrollbar.pack(side="right", fill="y")
 
         row, col = 0, 0
-        for image_file in images:
+        subfolder_count = 1
+        for idx, image_file in enumerate(images):
+            if idx > 0 and idx % 920 == 0:
+                subfolder_count += 1
+                folder_frame = tk.Frame(notebook)
+                notebook.add(folder_frame, text=f"{folder_name} - Part {subfolder_count}")
+
+                canvas = tk.Canvas(folder_frame)
+                scrollbar = tk.Scrollbar(folder_frame, orient="vertical", command=canvas.yview)
+                scrollable_frame = tk.Frame(canvas)
+
+                scrollable_frame.bind(
+                    "<Configure>",
+                    lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+                )
+
+                canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+                canvas.configure(yscrollcommand=scrollbar.set)
+
+                canvas.pack(side="left", fill="both", expand=True)
+                scrollbar.pack(side="right", fill="y")
+
+                row, col = 0, 0
+
             try:
                 img = Image.open(image_file).resize((150, 150), Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
@@ -92,7 +115,7 @@ def create_page2(frame, root, selected_folder):
         def on_mouse_wheel(event):
             canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-        frame.bind_all("<MouseWheel>", on_mouse_wheel)
+        canvas.bind_all("<MouseWheel>", on_mouse_wheel)
 
     def display_images(images_by_folder):
         for folder_name, images in images_by_folder.items():

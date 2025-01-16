@@ -104,19 +104,39 @@ def setup_heatmap_page(frame, selected_folder):
         scrollbar.pack(side="right", fill="y")
 
         row, col = 0, 0
-        image_refs = []  # Stocker les références pour éviter le garbage collection
+        subfolder_count = 1
+        for idx, image_file in enumerate(images):
+            if idx > 0 and idx % 920 == 0:
+                subfolder_count += 1
+                folder_frame = tk.Frame(notebook)
+                notebook.add(folder_frame, text=f"{folder_name} - Part {subfolder_count}")
 
-        for image_file in images:
+                canvas = tk.Canvas(folder_frame)
+                scrollbar = tk.Scrollbar(folder_frame, orient="vertical", command=canvas.yview)
+                scrollable_frame = tk.Frame(canvas)
+
+                scrollable_frame.bind(
+                    "<Configure>",
+                    lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+                )
+
+                canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+                canvas.configure(yscrollcommand=scrollbar.set)
+
+                canvas.pack(side="left", fill="both", expand=True)
+                scrollbar.pack(side="right", fill="y")
+
+                row, col = 0, 0
+
             try:
                 img = Image.open(image_file).resize((150, 150), Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
-                image_refs.append(photo)  # Conserver une référence
 
-                label = tk.Label(scrollable_frame, image=photo, bg="white")
+                label = tk.Label(scrollable_frame, image=photo)
                 label.image = photo  # Préserver une référence pour éviter le garbage collector
                 label.grid(row=row, column=col, padx=10, pady=10)
 
-                # Associer un clic gauche pour afficher la heatmap avec animation
+                # Associer un clic gauche pour afficher les détails de l'image
                 label.bind("<Button-1>", lambda e, path=image_file: [animate_click(label), show_heatmap(path)])
 
                 col += 1

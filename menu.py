@@ -12,7 +12,7 @@ def create_app_window():
     root.geometry("1280x720")  # Taille de la fenêtre principale
 
     # Créer une variable pour stocker le dossier sélectionné
-    selected_folder = tk.StringVar(value="images")
+    selected_folder = tk.StringVar()
 
     # Fonction pour sélectionner un dossier
     def select_folder():

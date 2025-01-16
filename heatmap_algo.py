@@ -81,10 +81,12 @@ def dbscan_clustering(histograms_scaled, eps=0.3, min_samples=2):
     
     # Reassign cluster -1 (noise points) to the nearest cluster
     if -1 in clusters:
-        for i, cluster in enumerate(clusters):
-            if cluster == -1:
-                nearest_cluster = np.argmin(distance_matrix[i][clusters != -1])
-                clusters[i] = clusters[clusters != -1][nearest_cluster]
+        valid_clusters = clusters != -1
+        if np.any(valid_clusters):
+            for i, cluster in enumerate(clusters):
+                if cluster == -1:
+                    nearest_cluster = np.argmin(distance_matrix[i][valid_clusters])
+                    clusters[i] = clusters[valid_clusters][nearest_cluster]
     
     return clusters
 
