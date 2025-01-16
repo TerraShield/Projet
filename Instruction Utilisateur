@@ -1,0 +1,7 @@
+Instructions d’utilisation Lancer l’application :
+
+-Lancer le fichier main.py -Choisir un dossier d’images : Cliquez sur "Sélectionner un dossier" dans le menu principal. Naviguez jusqu’au dossier contenant les images des lettrines. 
+-Choisir un onglet : -Liste : Visualisez toutes les images chargées, organisées par sous-dossier. 
+-Clustering : Sélectionnez un algorithme (KMeans ou DBSCAN). Indiquez le nombre de clusters (ex :5) Cliquez sur Appliquer pour afficher les regroupements. Vous pouvez télécharger le cluster obtenu 
+-Histogramme : Visualisez l’histogramme des couleurs pour chaque image Enregistrez si vous le souhaiter 
+-Heatmap : Obtenez une vue heatmap basée sur les caractéristiques SIFT. Enregistrez si vous le souhaiter
