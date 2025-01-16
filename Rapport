@@ -1,5 +1,3 @@
-Structure des fichiers main.py : Point d’entrée pour exécuter l’application. menu.py : Gestion du menu principal et navigation entre les onglets. cluster_page.py : Implémentation des algorithmes de clustering. heatmap_algo.py : Traitement des images avec SIFT et BoW. heatmap_page.py : Affichage des heatmaps. histogramme.py : Calcul et affichage des histogrammes de couleurs. detail_image.py : Affichage détaillé d’une image sélectionnée.
-
 Algorithmes utilisés 
 -Clustering (KMeans et DBSCAN) : KMeans regroupe les images en fonction de leur proximité dans un espace de caractéristiques. 
 -DBSCAN identifie les clusters denses et marque les anomalies. ex: {"eps": 0.2, "min_samples": 3} eps : La distance maximale entre deux échantillons pour qu'ils soient considérés comme voisins. min_samples : Le nombre minimal de points dans un voisinage pour qu'un point soit considéré comme un noyau.
@@ -13,4 +11,38 @@ Fonctionnement de l'interface
 
 Librairies utilisées : -numpy -scikit-learn -scikit-image -matplotlib -Pillow -tkinter -opencv-python-headless -mplcursors
 
-Problème rencontré: 
+Structure des fichiers:
+main.py : 
+Point d'entrée de l'application. Ce fichier initialise l'application et affiche l'interface utilisateur principale.
+
+
+menu.py : 
+Gère le menu principal et permet la navigation entre les différentes fonctionnalités via des onglets. Permet de séléctionner un dossier d'images.
+
+cluster_page.py : 
+Affiche les clusters générés par les algorithmes. Permet le téléchargement des clusters générés dans des dossiers.
+
+Cluster_ algo.py : 
+Implémente les algorithmes de clustering (KMeans, DBSCAN) et gère la dimensionnalité des images (PCA).
+problème: Des valeurs incorrectes peuvent produire une erreur.
+
+heatmap_algo.py : 
+Traite des images avec SIFT, BoW et permet de produire des heatmaps et des clusterings avec DBSCAN.
+
+heatmap_page.py : 
+Affiche les heatmaps générées à partir des données traitées.
+Problème: Si le fichier contient beaucoup d'images, l'affichage peut être lent.
+
+histogramme.py : 
+Affiche les histogrammes de couleurs pour chaque image.
+
+histogramme_algo :
+Calcule les histogrammes de couleurs pour chaque image.
+
+detail_image.py :
+Affiche une vue détaillée d’une image sélectionnée dans les clusters.
+
+Page_2.py : 
+Liste toutes les images du dossier sélectionné
+
+Nous avons principalement eu un problème d'affichage dans chaque page lorsqu'il y avait trop d'images. Cela continue à ralentir l'affichage mais fonctione cependant au bout d'un certain nombre d'images le logiciel renvoie une erreur.
