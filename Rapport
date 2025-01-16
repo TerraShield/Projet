@@ -1,0 +1,16 @@
+Structure des fichiers main.py : Point d’entrée pour exécuter l’application. menu.py : Gestion du menu principal et navigation entre les onglets. cluster_page.py : Implémentation des algorithmes de clustering. heatmap_algo.py : Traitement des images avec SIFT et BoW. heatmap_page.py : Affichage des heatmaps. histogramme.py : Calcul et affichage des histogrammes de couleurs. detail_image.py : Affichage détaillé d’une image sélectionnée.
+
+Algorithmes utilisés 
+-Clustering (KMeans et DBSCAN) : KMeans regroupe les images en fonction de leur proximité dans un espace de caractéristiques. 
+-DBSCAN identifie les clusters denses et marque les anomalies. ex: {"eps": 0.2, "min_samples": 3} eps : La distance maximale entre deux échantillons pour qu'ils soient considérés comme voisins. min_samples : Le nombre minimal de points dans un voisinage pour qu'un point soit considéré comme un noyau.
+-Réduction de dimensionnalité (PCA) : Utilisée pour réduire les dimensions avant clustering. -
+SIFT et BoW : SIFT (Scale-Invariant Feature Transform) extrait des points clés des images. BoW (Bag of Words) regroupe ces descripteurs en mots visuels.
+
+Fonctionnement de l'interface 
+-Créée avec Tkinter. 
+-Navigation : Les onglets permettent d’accéder aux différentes fonctionnalités. 
+-Paramètres : Menu déroulant et champs de saisie pour configurer les algorithmes.
+
+Librairies utilisées : -numpy -scikit-learn -scikit-image -matplotlib -Pillow -tkinter -opencv-python-headless -mplcursors
+
+Problème rencontré: 
