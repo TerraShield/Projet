@@ -181,6 +181,27 @@ def setup_cluster_page(frame, selected_folder):
     n_jobs_label = tk.Label(filter_frame, text="N Jobs (DBSCAN) :", font=("Arial", 14))
     n_jobs_entry = tk.Entry(filter_frame, font=("Arial", 14))
 
+    def create_tooltip(widget, text):
+        tooltip = tk.Toplevel(widget)
+        tooltip.wm_overrideredirect(True)
+        tooltip.wm_geometry("+0+0")
+        label = tk.Label(tooltip, text=text, background="yellow", relief="solid", borderwidth=1, font=("Arial", 10))
+        label.pack()
+        tooltip.withdraw()
+
+        def enter(event):
+            x, y, _, _ = widget.bbox("insert")
+            x += widget.winfo_rootx() + 25
+            y += widget.winfo_rooty() + 25
+            tooltip.wm_geometry(f"+{x}+{y}")
+            tooltip.deiconify()
+
+        def leave(event):
+            tooltip.withdraw()
+
+        widget.bind("<Enter>", enter)
+        widget.bind("<Leave>", leave)
+
     def open_dbscan_config():
         """Ouvre une fenêtre pour configurer les paramètres de DBSCAN."""
         config_window = tk.Toplevel(frame)
@@ -190,30 +211,37 @@ def setup_cluster_page(frame, selected_folder):
         tk.Label(config_window, text="Eps :", font=("Arial", 14)).pack(pady=5)
         eps_entry = tk.Entry(config_window, font=("Arial", 14), textvariable=last_eps)
         eps_entry.pack(pady=5)
+        create_tooltip(eps_entry, "Distance maximale entre deux échantillons pour qu'ils soient considérés comme voisins.")
 
         tk.Label(config_window, text="Min Samples :", font=("Arial", 14)).pack(pady=5)
         min_samples_entry = tk.Entry(config_window, font=("Arial", 14), textvariable=last_min_samples)
         min_samples_entry.pack(pady=5)
+        create_tooltip(min_samples_entry, "Nombre minimum d'échantillons dans un voisinage pour qu'un point soit considéré comme un noyau.")
 
         tk.Label(config_window, text="Metric :", font=("Arial", 14)).pack(pady=5)
         metric_menu = ttk.Combobox(config_window, textvariable=last_metric, values=['euclidean', 'manhattan', 'chebyshev', 'minkowski', 'precomputed'], font=("Arial", 14))
         metric_menu.pack(pady=5)
+        create_tooltip(metric_menu, "La métrique utilisée pour calculer la distance entre les points.")
 
         tk.Label(config_window, text="Algorithm :", font=("Arial", 14)).pack(pady=5)
         algorithm_menu = ttk.Combobox(config_window, textvariable=last_algorithm, values=['auto', 'ball_tree', 'kd_tree', 'brute'], font=("Arial", 14))
         algorithm_menu.pack(pady=5)
+        create_tooltip(algorithm_menu, "L'algorithme utilisé pour calculer les plus proches voisins.")
 
         tk.Label(config_window, text="Leaf Size :", font=("Arial", 14)).pack(pady=5)
         leaf_size_entry = tk.Entry(config_window, font=("Arial", 14), textvariable=last_leaf_size)
         leaf_size_entry.pack(pady=5)
+        create_tooltip(leaf_size_entry, "Taille des feuilles passées à BallTree ou KDTree.")
 
         tk.Label(config_window, text="P :", font=("Arial", 14)).pack(pady=5)
         p_entry = tk.Entry(config_window, font=("Arial", 14), textvariable=last_p)
         p_entry.pack(pady=5)
+        create_tooltip(p_entry, "Le paramètre de puissance pour la métrique Minkowski.")
 
         tk.Label(config_window, text="N Jobs :", font=("Arial", 14)).pack(pady=5)
         n_jobs_entry = tk.Entry(config_window, font=("Arial", 14), textvariable=last_n_jobs)
         n_jobs_entry.pack(pady=5)
+        create_tooltip(n_jobs_entry, "Le nombre de tâches à utiliser pour le calcul.")
 
         def apply_dbscan_config():
             last_eps.set(eps_entry.get() or "0.5")
