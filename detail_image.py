@@ -12,7 +12,7 @@ def show_image_detail(image_path):
     # Créer une nouvelle fenêtre
     detail_window = tk.Toplevel()
     detail_window.title(f"Détail de l'image : {os.path.basename(image_path)}")
-    detail_window.geometry("800x600")
+    detail_window.geometry("800x800")
 
     try:
         # Charger l'image sélectionnée
@@ -41,8 +41,39 @@ def show_image_detail(image_path):
                 except Exception as e:
                     tk.Label(detail_window, text=f"Erreur : {e}", font=("Arial", 12), fg="red").pack(pady=10)
 
+        def rename_image():
+            rename_window = tk.Toplevel(detail_window)
+            rename_window.title("Renommer l'image")
+            rename_window.geometry("300x150")
+
+            tk.Label(rename_window, text="Entrez le nouveau nom de l'image :", font=("Arial", 12)).pack(pady=5)
+            frame = tk.Frame(rename_window)
+            frame.pack(pady=5)
+            new_name_var = tk.StringVar()
+            new_name_entry = tk.Entry(frame, textvariable=new_name_var, font=("Arial", 12))
+            new_name_entry.pack(side="left")
+            tk.Label(frame, text=".jpg", font=("Arial", 12)).pack(side="left")
+
+            def apply_rename():
+                new_name = new_name_var.get()
+                if new_name:
+                    new_path = os.path.join(os.path.dirname(image_path), new_name + ".jpg")
+                    try:
+                        os.rename(image_path, new_path)
+                        detail_window.title(f"Détail de l'image : {os.path.basename(new_path)}")
+                        title_label.config(text=os.path.basename(new_path))
+                        tk.Label(detail_window, text="Image renommée avec succès !", font=("Arial", 12), fg="green").pack(pady=10)
+                        rename_window.destroy()
+                    except Exception as e:
+                        tk.Label(detail_window, text=f"Erreur : {e}", font=("Arial", 12), fg="red").pack(pady=10)
+
+            tk.Button(rename_window, text="Appliquer", command=apply_rename, font=("Arial", 12)).pack(pady=10)
+
         # Bouton pour ajouter l'image à un dossier
         tk.Button(detail_window, text="Ajouter au dossier", command=add_to_folder, font=("Arial", 14)).pack(pady=10)
+
+        # Bouton pour renommer l'image
+        tk.Button(detail_window, text="Renommer l'image", command=rename_image, font=("Arial", 14)).pack(pady=10)
 
         # Bouton pour fermer la fenêtre
         tk.Button(detail_window, text="Fermer", command=detail_window.destroy, font=("Arial", 14)).pack(pady=10)
