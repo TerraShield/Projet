@@ -55,7 +55,7 @@ def show_image_detail(image_path):
             tk.Label(rename_window, text="Entrez le nouveau nom de l'image :", font=("Arial", 12)).pack(pady=5)
             frame = tk.Frame(rename_window)
             frame.pack(pady=5)
-            new_name_var = tk.StringVar()
+            new_name_var = tk.StringVar(value=os.path.splitext(os.path.basename(image_path))[0])
             new_name_entry = tk.Entry(frame, textvariable=new_name_var, font=("Arial", 12))
             new_name_entry.pack(side="left")
             tk.Label(frame, text=".jpg", font=("Arial", 12)).pack(side="left")
