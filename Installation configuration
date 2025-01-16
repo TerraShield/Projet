@@ -1,0 +1,23 @@
+Introduction Ce logiciel permet de regrouper et analyser les lettrines dans les anciens documents grâce à des algorithmes de clustering.
+
+Fonctionnalités principales : -Chargement d’images. -Analyse des lettrines via des algorithmes de clustering. -Visualisation des résultats, y compris des heatmaps et histogrammes.
+
+Processus installation de l'environnement virtuel:
+
+--Manuel-- Installer Miniconda (https://docs.anaconda.com/miniconda/install/)
+
+--Commande (windows)-- curl https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe --output .\Downloads\Miniconda3-latest-Windows-x86_64.exe
+
+Windows :
+Lancez le .exe
+Suivez les instructions ( Ne pas oublier de rajouter Miniconda à la variable PATH )
+MacOs/Linux :
+Dans un terminal, exécutez la commande suivante à l'endroit où est le fichier d'installation : " bash Miniconda3-latest-Linux-x86_64.sh " / " bash Miniconda3-latest-MacOSX-arm64.sh "
+Suivez les instructions
+Dans un terminal: Vous pouvez vérifier par la suite que conda est bien installé avec la commande suivante : " conda --version "
+
+Après l'installation, il est recommandé de mettre Conda à jour Pour se faire exécutez la commande suivante : " conda update -n base -c default conda "
+
+Par la suite, avec un environnement déjà installé, ici "projet" issue du fichier environnement.yml, vous pouvez l'initialiser en exécutant ces deux commandes : " conda env create -f environnement.yml " " conda activate projet "
+
+Dans votre IDE, sélectionner cet environnement nouvellement créé à partir du .yml comme interpreter
